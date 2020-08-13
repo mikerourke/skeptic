@@ -480,6 +480,13 @@ const char *CapabilityToString(const TW_UINT16 capability) {
   }
 }
 
+const char *CapabilityItemToString(
+  TW_UINT16 id,
+  TW_UINT32 item,
+  TW_UINT16 itemType) {
+  return "NOT IMPLEMENTED";
+}
+
 const char *ConditionCodeToString(const TW_UINT16 conditionCode) {
   switch (conditionCode) {
     case TWCC_SUCCESS:
@@ -620,5 +627,61 @@ const char *ImageFileFormatToExtension(const TW_UINT16 imageFileFormat) {
 
     default:
       return unknownValue("Unknown Image File Format", imageFileFormat);
+  }
+}
+
+
+const char *TwainTypeToString(const TW_UINT16 type) {
+  switch (type) {
+    case TWTY_INT8:
+      return "TWTY_INT8";
+
+    case TWTY_INT16:
+      return "TWTY_INT16";
+
+    case TWTY_INT32:
+      return "TWTY_INT32";
+
+    case TWTY_UINT8:
+      return "TWTY_UINT8";
+
+    case TWTY_UINT16:
+      return "TWTY_UINT16";
+
+    case TWTY_UINT32:
+      return "TWTY_UINT32";
+
+    case TWTY_BOOL:
+      return "TWTY_BOOL";
+
+    case TWTY_FIX32:
+      return "TWTY_FIX32";
+
+    case TWTY_FRAME:
+      return "TWTY_FRAME";
+
+    case TWTY_STR32:
+      return "TWTY_STR32";
+
+    case TWTY_STR64:
+      return "TWTY_STR64";
+
+    case TWTY_STR128:
+      return "TWTY_STR128";
+
+    case TWTY_STR255:
+      return "TWTY_STR255";
+
+    case TWTY_STR1024:
+      return "TWTY_STR1024";
+
+    case TWTY_UNI512:
+      return "TWTY_UNI512";
+
+    case TWTY_HANDLE:
+      return "TWTY_HANDLE";
+
+    default:
+      return unknownValue("Unknown Type", type);
   }
 }

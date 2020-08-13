@@ -1,6 +1,7 @@
-#include "DsmInterface.h"
 #include <iostream>
 #include <CoreFoundation/CoreFoundation.h>
+
+#include "DsmInterface.h"
 
 using namespace std;
 
@@ -17,7 +18,9 @@ TW_UINT16 DsmEntry(
   TW_UINT16 dataArgumentType,
   TW_UINT16 message,
   TW_MEMREF pData) {
-  TW_UINT16 ret = TWRC_FAILURE;
+  cout << "Loading the DSM library..." << endl;
+
+  TW_UINT16 returnCode = TWRC_FAILURE;
 
   if (gpDsmLibrary == nullptr) {
     if (!LoadDsmLibrary()) {
@@ -27,10 +30,18 @@ TW_UINT16 DsmEntry(
   }
 
   if (gpDsmEntryProc != nullptr) {
-    ret = gpDsmEntryProc(pOrigin, pDest, dataGroup, dataArgumentType, message, pData);
+    cout << "Loading the DSM entry proc..." << endl;
+
+    returnCode = gpDsmEntryProc(
+      pOrigin,
+      pDest,
+      dataGroup,
+      dataArgumentType,
+      message,
+      pData);
   }
 
-  return ret;
+  return returnCode;
 }
 
 bool LoadDsmLibrary() {
@@ -56,7 +67,7 @@ bool LoadDsmLibrary() {
   if (bundle == nullptr) {
     cerr << "Bundle not loaded!" << endl;
   } else {
-    cout << "Got bundle!" << bundle << endl;
+    cout << "Got bundle!" << endl;
   }
 
   gpDsmLibrary = bundle;
@@ -69,11 +80,11 @@ bool LoadDsmLibrary() {
     "DSM_Entry",
     kCFStringEncodingUTF8);
 
-  void *fp = CFBundleGetFunctionPointerForName(bundle, cfFuncName);
+  auto fp = CFBundleGetFunctionPointerForName(bundle, cfFuncName);
   if (!fp) {
     cerr << "Function not found!" << endl;
   } else {
-    cout << "Got function!" << fp << endl;
+    cout << "Got function!" << endl;
   }
 
   gpDsmEntryProc = (DSMENTRYPROC) fp;

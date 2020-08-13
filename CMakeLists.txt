@@ -30,6 +30,8 @@ add_executable(twainful
     src/TwainApp.cpp
     src/TwainApp.h
     src/TwainString.cpp
-    src/TwainString.h)
+    src/TwainString.h
+    src/UserInterface.cpp
+    src/UserInterface.h)
 
 target_link_libraries(twainful ${FreeImage_LIBRARIES})

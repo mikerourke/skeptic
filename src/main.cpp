@@ -1,9 +1,8 @@
-#include <csignal>
 #include <iostream>
 #include <semaphore.h>
-#include "main.h"
 #include "CommonTwain.h"
 #include "TwainApp.h"
+#include "UserInterface.h"
 
 using namespace std;
 
@@ -50,7 +49,49 @@ FAR PASCAL TW_UINT16 DSMCallback(
   return TWRC_SUCCESS;
 }
 
-int main() {
-  cout << "Hello, World!" << endl;
-  return 0;
+void onSigInt(int signal) {
+  UNUSEDARG(signal);
+  cout << "\nGoodbye!" << endl;
+  exit(0);
+}
+
+int main(int argc, char *argv[]) {
+  UNUSEDARG(argc);
+  UNUSEDARG(argv);
+  int ret = EXIT_SUCCESS;
+
+  cout << "YAY";
+
+  gpTwainApplication = new TwainApp();
+
+  signal(SIGINT, &onSigInt);
+
+  string input;
+
+  PrintOptions();
+
+  // Start the main event loop:
+  for (;;) {
+    cout << "\n(h for help) > ";
+    cin >> input;
+    cout << endl;
+
+    if (input == "q") {
+      break;
+    } else if (input == "h") {
+      PrintOptions();
+    } else if (input == "cdsm") {
+      gpTwainApplication->ConnectDsm();
+    } else if (input == "xdsm") {
+      gpTwainApplication->DisconnectDsm();
+    } else {
+      PrintOptions();
+    }
+  }
+
+  gpTwainApplication->Exit();
+  delete gpTwainApplication;
+  gpTwainApplication = nullptr;
+
+  return ret;
 }

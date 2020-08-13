@@ -5,6 +5,10 @@
 
 using namespace std;
 
+TW_FIX32 FloatToFix32 (float floatValue);
+
+float Fix32ToFloat(const TW_FIX32& fix32Value);
+
 #pragma pack (push, before_twain)
 
 /** TW_ONEVALUE that holds a TW_FIX32 item */

@@ -45,15 +45,15 @@ void FreeImageErrorHandler(FREE_IMAGE_FORMAT format, const char *message) {
 }
 
 TW_IDENTITY AppIdentity() {
-  const char *version = "2.0.9";
   TW_IDENTITY identity;
 
-  identity.Id = 0;
+  identity.Id = nullptr;
   identity.Version.MajorNum = 2;
   identity.Version.MinorNum = 0;
   identity.Version.Language = TWLG_USA;
   identity.Version.Country = TWCY_USA;
-  strcpy(identity.Version.Info, version);
+  // FIXME: This is causing a segfault.
+//  strcpy(reinterpret_cast<char *>(identity.Version.Info), "2.0.9");
   identity.ProtocolMajor = TWON_PROTOCOLMAJOR;
   identity.ProtocolMinor = TWON_PROTOCOLMINOR;
   identity.SupportedGroups = DF_APP2 | DG_IMAGE | DG_CONTROL;

@@ -1522,7 +1522,7 @@ typedef struct {
  * These are for items that need to be determined before DS is opened.
  * NOTE: Supported Functionality constants must be powers of 2 as they are
  *       used as bitflags when Application asks DSM to present a list of DSs.
- *       to support backward capability the TwainApp and DS will not use the fields
+ *       to support backward capability the Application and DS will not use the fields
  */
 #define DF_DSM2             0x10000000L
 #define DF_APP2             0x20000000L

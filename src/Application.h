@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_TWAINAPP_H
-#define TWAINFUL_TWAINAPP_H
+#ifndef SKEPTIC_APPLICATION_H
+#define SKEPTIC_APPLICATION_H
 
 #pragma once
 
@@ -27,14 +27,14 @@ bool operator==(const TW_FIX32 &fix1, const TW_FIX32 &fix2);
 */
 void PrintMessage(const char *pContents, ...);
 
-/** Populated TW_IDENTITY for the TwainApp constructor */
+/** Populated TW_IDENTITY for the Application constructor */
 TW_IDENTITY AppIdentity();
 
-class TwainApp {
+class Application {
 public:
-  TwainApp();
+  Application();
 
-  ~TwainApp();
+  ~Application();
 
   TW_UINT16 CallDsm(
     TW_UINT16 dataGroup,
@@ -232,4 +232,4 @@ private:
   TW_USERINTERFACE mUI;
 };
 
-#endif //TWAINFUL_TWAINAPP_H
+#endif //SKEPTIC_APPLICATION_H

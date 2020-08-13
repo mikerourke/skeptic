@@ -5,7 +5,7 @@
 
 #include "FreeImage.h"
 #include "TiffWriter.h"
-#include "TwainApp.h"
+#include "Application.h"
 #include "TwainString.h"
 
 extern TW_ENTRYPOINT gDsmEntryPoint;
@@ -65,7 +65,7 @@ TW_IDENTITY AppIdentity() {
   return identity;
 }
 
-TwainApp::TwainApp() :
+Application::Application() :
   DataSourceMessage((TW_UINT16) -1),
   CurrentDsmState(DsmState::Unknown),
   TwainEvent(0),
@@ -79,13 +79,13 @@ TwainApp::TwainApp() :
   FreeImage_SetOutputMessage(FreeImageErrorHandler);
 }
 
-TwainApp::~TwainApp() {
+Application::~Application() {
   FreeImage_DeInitialise();
   UnloadDsmLibrary();
   mDataSources.erase(mDataSources.begin(), mDataSources.end());
 }
 
-TW_UINT16 TwainApp::CallDsm(
+TW_UINT16 Application::CallDsm(
   TW_UINT16 dataGroup,
   TW_UINT16 dataArgumentType,
   TW_UINT16 message,
@@ -100,10 +100,10 @@ TW_UINT16 TwainApp::CallDsm(
     pData);
 }
 
-TW_INT16 TwainApp::PrintError(const string &errorMessage, pTW_IDENTITY pDestId) {
+TW_INT16 Application::PrintError(const string &errorMessage, pTW_IDENTITY pDestId) {
   TW_INT16 conditionCode = TWCC_SUCCESS;
 
-  cerr << "TwainApp: ";
+  cerr << "Application: ";
   if (errorMessage.length() > 0) {
     cerr << errorMessage;
   } else {
@@ -117,7 +117,7 @@ TW_INT16 TwainApp::PrintError(const string &errorMessage, pTW_IDENTITY pDestId) 
   return conditionCode;
 }
 
-TW_UINT16 TwainApp::GetConditionCode(pTW_IDENTITY pDestId, TW_INT16 &conditionCode) {
+TW_UINT16 Application::GetConditionCode(pTW_IDENTITY pDestId, TW_INT16 &conditionCode) {
   TW_STATUS status;
   memset(&status, 0, sizeof(TW_STATUS));
 
@@ -135,7 +135,7 @@ TW_UINT16 TwainApp::GetConditionCode(pTW_IDENTITY pDestId, TW_INT16 &conditionCo
   return returnCode;
 }
 
-void TwainApp::Exit() {
+void Application::Exit() {
   if (isDsmClosed()) {
     return;
   }
@@ -158,7 +158,7 @@ void TwainApp::Exit() {
   DisconnectDsm();
 }
 
-void TwainApp::ConnectDsm() {
+void Application::ConnectDsm() {
   if (CurrentDsmState > DsmState::Open) {
     PrintMessage("The DSM has already been opened, close it first\n");
     return;
@@ -199,7 +199,7 @@ void TwainApp::ConnectDsm() {
   GetDataSources();
 }
 
-void TwainApp::DisconnectDsm() {
+void Application::DisconnectDsm() {
   if (isDsmClosed()) {
     return;
   }
@@ -215,7 +215,7 @@ void TwainApp::DisconnectDsm() {
 
 TW_IDENTITY gSource;
 
-pTW_IDENTITY TwainApp::GetDefaultDataSource() {
+pTW_IDENTITY Application::GetDefaultDataSource() {
   if (isDsmClosed()) {
     return nullptr;
   }
@@ -234,7 +234,7 @@ pTW_IDENTITY TwainApp::GetDefaultDataSource() {
   return &gSource;
 }
 
-pTW_IDENTITY TwainApp::SetDefaultDataSource(unsigned int index) {
+pTW_IDENTITY Application::SetDefaultDataSource(unsigned int index) {
   if (isDsmClosed()) {
     return nullptr;
   }
@@ -261,7 +261,7 @@ pTW_IDENTITY TwainApp::SetDefaultDataSource(unsigned int index) {
   return mpDataSource;
 }
 
-pTW_IDENTITY TwainApp::SelectDefaultDataSource() {
+pTW_IDENTITY Application::SelectDefaultDataSource() {
   if (isDsmClosed()) {
     return nullptr;
   }
@@ -286,7 +286,7 @@ pTW_IDENTITY TwainApp::SelectDefaultDataSource() {
   }
 }
 
-void TwainApp::LoadDataSource(const TW_INT32 id) {
+void Application::LoadDataSource(const TW_INT32 id) {
   if (isDsmClosed()) {
     return;
   }
@@ -360,7 +360,7 @@ void TwainApp::LoadDataSource(const TW_INT32 id) {
   }
 }
 
-void TwainApp::UnloadDataSource() {
+void Application::UnloadDataSource() {
   if (isDataSourceClosed()) {
     return;
   }
@@ -379,7 +379,7 @@ void TwainApp::UnloadDataSource() {
   }
 }
 
-pTW_IDENTITY TwainApp::GetDataSource(TW_INT16 index) const {
+pTW_IDENTITY Application::GetDataSource(TW_INT16 index) const {
   if (index < 0) {
     return mpDataSource;
   }
@@ -391,7 +391,7 @@ pTW_IDENTITY TwainApp::GetDataSource(TW_INT16 index) const {
   return nullptr;
 }
 
-void TwainApp::GetDataSources() {
+void Application::GetDataSources() {
   if (isDsmClosed()) {
     return;
   }
@@ -425,7 +425,7 @@ void TwainApp::GetDataSources() {
   } while (returnCode == TWRC_SUCCESS);
 }
 
-bool TwainApp::EnableDataSource() {
+bool Application::EnableDataSource() {
   if (isDataSourceClosed()) {
     return false;
   }
@@ -457,7 +457,7 @@ bool TwainApp::EnableDataSource() {
   return true;
 }
 
-void TwainApp::DisableDataSource() {
+void Application::DisableDataSource() {
   if (CurrentDsmState < DsmState::DataSourceEnabled) {
     PrintMessage("You need to enable the data source first.\n");
     return;
@@ -475,7 +475,7 @@ void TwainApp::DisableDataSource() {
   }
 }
 
-bool TwainApp::UpdateImageInfo() {
+bool Application::UpdateImageInfo() {
   // Clear our image info structure:
   memset(&mImageInfo, 0, sizeof(mImageInfo));
 
@@ -492,7 +492,7 @@ bool TwainApp::UpdateImageInfo() {
   return returnCode == TWRC_SUCCESS;
 }
 
-void TwainApp::InitiateNativeTransfer() {
+void Application::InitiateNativeTransfer() {
   PrintMessage("Starting a native transfer...\n");
 
   TW_STR255 outFileName;
@@ -638,7 +638,7 @@ void TwainApp::InitiateNativeTransfer() {
   PrintMessage("Done!\n");
 }
 
-void TwainApp::InitiateFileTransfer(TW_UINT16 fileFormat) {
+void Application::InitiateFileTransfer(TW_UINT16 fileFormat) {
   PrintMessage("app: Starting a TWSX_FILE transfer...\n");
 
   bool transfersPending = true;
@@ -756,7 +756,7 @@ void TwainApp::InitiateFileTransfer(TW_UINT16 fileFormat) {
   PrintMessage("File transfer complete!\n");
 }
 
-void TwainApp::InitiateMemoryTransfer() {
+void Application::InitiateMemoryTransfer() {
   // For memory transfers, the FreeImage library will not be used, instead a
   // TIFF will be progressively written. This method was chosen because it
   // is possible that a 4GB image could be transferred and an image of that
@@ -958,7 +958,7 @@ void TwainApp::InitiateMemoryTransfer() {
   PrintMessage("Memory transfer complete!\n");
 }
 
-TW_UINT16 TwainApp::DoAbortTransfer() {
+TW_UINT16 Application::DoAbortTransfer() {
   PrintMessage("Stop any transfer we may have started but could not finish...\n");
 
   TW_PENDINGXFERS pendingTransfers;
@@ -983,7 +983,7 @@ TW_UINT16 TwainApp::DoAbortTransfer() {
   return returnCode;
 }
 
-void TwainApp::UpdateExtImageInfo() {
+void Application::UpdateExtImageInfo() {
   int tableBarCodeExtImgInfo[] = {
     TWEI_BARCODETYPE,
     TWEI_BARCODETEXTLENGTH,
@@ -1152,7 +1152,7 @@ void TwainApp::UpdateExtImageInfo() {
   }
 }
 
-TW_UINT16 TwainApp::SetCapabilityOneValue(
+TW_UINT16 Application::SetCapabilityOneValue(
   TW_UINT16 id,
   const int value,
   TW_UINT16 twainType
@@ -1218,7 +1218,7 @@ TW_UINT16 TwainApp::SetCapabilityOneValue(
   return returnCode;
 }
 
-TW_UINT16 TwainApp::SetCapabilityOneValue(TW_UINT16 id, const pTW_FIX32 pValue) {
+TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FIX32 pValue) {
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ONEVALUE;
@@ -1248,7 +1248,7 @@ TW_UINT16 TwainApp::SetCapabilityOneValue(TW_UINT16 id, const pTW_FIX32 pValue) 
   return returnCode;
 }
 
-TW_UINT16 TwainApp::SetCapabilityOneValue(TW_UINT16 id, const pTW_FRAME pValue) {
+TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FRAME pValue) {
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ONEVALUE;
@@ -1278,7 +1278,7 @@ TW_UINT16 TwainApp::SetCapabilityOneValue(TW_UINT16 id, const pTW_FRAME pValue) 
   return returnCode;
 }
 
-TW_UINT16 TwainApp::SetCapabilityArray(
+TW_UINT16 Application::SetCapabilityArray(
   TW_UINT16 id,
   const int *pValues,
   int count,
@@ -1363,7 +1363,7 @@ TW_UINT16 TwainApp::SetCapabilityArray(
   return returnCode;
 }
 
-TW_INT16 TwainApp::GetCapability(TW_CAPABILITY &capability, TW_UINT16 message) {
+TW_INT16 Application::GetCapability(TW_CAPABILITY &capability, TW_UINT16 message) {
   switch (message) {
     case MSG_GET:
     case MSG_GETCURRENT:
@@ -1406,7 +1406,7 @@ TW_INT16 TwainApp::GetCapability(TW_CAPABILITY &capability, TW_UINT16 message) {
   return TWCC_SUCCESS;
 }
 
-TW_INT16 TwainApp::QuerySupportCapability(
+TW_INT16 Application::QuerySupportCapability(
   TW_UINT16 id,
   TW_UINT32 &querySupport
 ) {
@@ -1444,7 +1444,7 @@ TW_INT16 TwainApp::QuerySupportCapability(
   return returnCode;
 }
 
-TW_INT16 TwainApp::GetLabel(TW_UINT16 capabilityId, string &label) {
+TW_INT16 Application::GetLabel(TW_UINT16 capabilityId, string &label) {
   if (mGetLabelSupported == TWCC_BADPROTOCOL) {
     return TWRC_FAILURE;
   }
@@ -1500,7 +1500,7 @@ TW_INT16 TwainApp::GetLabel(TW_UINT16 capabilityId, string &label) {
   return returnCode;
 }
 
-TW_INT16 TwainApp::GetHelp(TW_UINT16 capabilityId, string &help) {
+TW_INT16 Application::GetHelp(TW_UINT16 capabilityId, string &help) {
   if (mGetHelpSupported == TWCC_BADPROTOCOL) {
     return TWRC_FAILURE;
   }
@@ -1557,7 +1557,7 @@ TW_INT16 TwainApp::GetHelp(TW_UINT16 capabilityId, string &help) {
   return returnCode;
 }
 
-void TwainApp::PrintAvailableDataSources() {
+void Application::PrintAvailableDataSources() {
   if (isDsmClosed()) {
     return;
   }
@@ -1571,7 +1571,7 @@ void TwainApp::PrintAvailableDataSources() {
   }
 }
 
-void TwainApp::PrintIdentityStruct(const TW_IDENTITY &identity) {
+void Application::PrintIdentityStruct(const TW_IDENTITY &identity) {
   PrintMessage("\n Id: %u\n", identity.Id);
   PrintMessage("Version: %u.%u\n", identity.Version.MajorNum, identity.Version.MinorNum);
   PrintMessage("SupportedGroups: %u\n", identity.SupportedGroups);
@@ -1580,7 +1580,7 @@ void TwainApp::PrintIdentityStruct(const TW_IDENTITY &identity) {
   PrintMessage("ProductName: %s\n", identity.ProductName);
 }
 
-void TwainApp::PrintMatchingIdentityStruct(const TW_UINT32 identityId) {
+void Application::PrintMatchingIdentityStruct(const TW_UINT32 identityId) {
   for (auto &dataSource : mDataSources) {
     if (*dataSource.Id == identityId) {
       PrintIdentityStruct(dataSource);
@@ -1589,7 +1589,7 @@ void TwainApp::PrintMatchingIdentityStruct(const TW_UINT32 identityId) {
   }
 }
 
-void TwainApp::InitiateCapabilities() {
+void Application::InitiateCapabilities() {
   if (isDsmClosed()) {
     return;
   }
@@ -1639,7 +1639,7 @@ void TwainApp::InitiateCapabilities() {
   GetCapability(TransferCount);
 }
 
-void TwainApp::TerminateCapabilities() {
+void Application::TerminateCapabilities() {
   if (isDsmClosed()) {
     return;
   }
@@ -1699,7 +1699,7 @@ void TwainApp::TerminateCapabilities() {
   }
 }
 
-void TwainApp::StartScan() {
+void Application::StartScan() {
   if (CurrentDsmState != DsmState::ReadyToScan) {
     PrintError("A scan cannot be initiated unless we are in state 6", mpDataSource);
     return;
@@ -1734,14 +1734,14 @@ void TwainApp::StartScan() {
   }
 }
 
-bool TwainApp::GetImageBitDepth(TW_UINT16 &value) {
+bool Application::GetImageBitDepth(TW_UINT16 &value) {
   TW_UINT32 bitDepth;
   bool current = GetCurrent(&ImageBitDepth, bitDepth);
   value = (TW_UINT16) bitDepth;
   return current;
 }
 
-void TwainApp::SetImageBitDepth(const TW_UINT16 value) {
+void Application::SetImageBitDepth(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_BITDEPTH, value, TWTY_UINT16);
 
   if (GetCapability(ImageBitDepth) != TWCC_SUCCESS) {
@@ -1754,14 +1754,14 @@ void TwainApp::SetImageBitDepth(const TW_UINT16 value) {
   }
 }
 
-bool TwainApp::GetImageCompression(TW_UINT16 &value) {
+bool Application::GetImageCompression(TW_UINT16 &value) {
   TW_UINT32 compression;
   bool current = GetCurrent(&ImageCompression, compression);
   value = (TW_UINT16) compression;
   return current;
 }
 
-void TwainApp::SetImageCompression(const TW_UINT16 value) {
+void Application::SetImageCompression(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_COMPRESSION, value, TWTY_UINT16);
 
   if (GetCapability(ImageCompression) != TWCC_SUCCESS) {
@@ -1774,14 +1774,14 @@ void TwainApp::SetImageCompression(const TW_UINT16 value) {
   }
 }
 
-bool TwainApp::GetImageFileFormat(TW_UINT16 &value) {
+bool Application::GetImageFileFormat(TW_UINT16 &value) {
   TW_UINT32 fileFormat;
   bool current = GetCurrent(&ImageFileFormat, fileFormat);
   value = (TW_UINT16) fileFormat;
   return current;
 }
 
-void TwainApp::SetImageFileFormat(const TW_UINT16 value) {
+void Application::SetImageFileFormat(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_IMAGEFILEFORMAT, value, TWTY_UINT16);
 
   if (GetCapability(ImageFileFormat) != TWCC_SUCCESS) {
@@ -1794,11 +1794,11 @@ void TwainApp::SetImageFileFormat(const TW_UINT16 value) {
   }
 }
 
-bool TwainApp::GetImageFrames(TW_FRAME &value) {
+bool Application::GetImageFrames(TW_FRAME &value) {
   return GetCurrent(&ImageFrames, value);
 }
 
-void TwainApp::SetImageFrames(const pTW_FRAME pValue) {
+void Application::SetImageFrames(const pTW_FRAME pValue) {
   SetCapabilityOneValue(ICAP_FRAMES, pValue);
 
   if (GetCapability(ImageFrames) != TWCC_SUCCESS) {
@@ -1822,14 +1822,14 @@ void TwainApp::SetImageFrames(const pTW_FRAME pValue) {
   }
 }
 
-bool TwainApp::GetImagePixelType(TW_INT16 &value) {
+bool Application::GetImagePixelType(TW_INT16 &value) {
   TW_UINT32 pixelType;
   bool current = GetCurrent(&ImagePixelType, pixelType);
   value = (TW_UINT16) pixelType;
   return current;
 }
 
-void TwainApp::SetImagePixelType(const TW_UINT16 value) {
+void Application::SetImagePixelType(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_PIXELTYPE, value, TWTY_UINT16);
 
   if (GetCapability(ImagePixelType) != TWCC_SUCCESS) {
@@ -1850,14 +1850,14 @@ void TwainApp::SetImagePixelType(const TW_UINT16 value) {
   GetCapability(ImageBitDepth);
 }
 
-bool TwainApp::GetImageTransferMechanism(TW_UINT16 &value) {
+bool Application::GetImageTransferMechanism(TW_UINT16 &value) {
   TW_UINT32 mechanism;
   bool current = GetCurrent(&ImageTransferMechanism, mechanism);
   value = (TW_UINT16) mechanism;
   return current;
 }
 
-void TwainApp::SetImageTransferMechanism(const TW_UINT16 value) {
+void Application::SetImageTransferMechanism(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_XFERMECH, value, TWTY_UINT16);
 
   if (GetCapability(ImageTransferMechanism) != TWCC_SUCCESS) {
@@ -1870,14 +1870,14 @@ void TwainApp::SetImageTransferMechanism(const TW_UINT16 value) {
   }
 }
 
-bool TwainApp::GetImageUnits(TW_INT16 &value) {
+bool Application::GetImageUnits(TW_INT16 &value) {
   TW_UINT32 units;
   bool current = GetCurrent(&ImageUnits, units);
   value = (TW_UINT16) units;
   return current;
 }
 
-void TwainApp::SetImageUnits(const TW_UINT16 value) {
+void Application::SetImageUnits(const TW_UINT16 value) {
   SetCapabilityOneValue(ICAP_UNITS, value, TWTY_UINT16);
 
   if (GetCapability(ImageUnits) != TWCC_SUCCESS) {
@@ -1898,30 +1898,30 @@ void TwainApp::SetImageUnits(const TW_UINT16 value) {
   }
 }
 
-bool TwainApp::GetImageXResolution(TW_FIX32 &value) {
+bool Application::GetImageXResolution(TW_FIX32 &value) {
   return GetCurrent(&ImageXResolution, value);
 }
 
-void TwainApp::SetImageXResolution(const pTW_FIX32 pValue) {
+void Application::SetImageXResolution(const pTW_FIX32 pValue) {
   setImageResolution(ICAP_XRESOLUTION, pValue);
 }
 
-bool TwainApp::GetImageYResolution(TW_FIX32 &value) {
+bool Application::GetImageYResolution(TW_FIX32 &value) {
   return GetCurrent(&ImageYResolution, value);
 }
 
-void TwainApp::SetImageYResolution(const pTW_FIX32 pValue) {
+void Application::SetImageYResolution(const pTW_FIX32 pValue) {
   setImageResolution(ICAP_YRESOLUTION, pValue);
 }
 
-bool TwainApp::GetTransferCount(TW_INT16 &value) {
+bool Application::GetTransferCount(TW_INT16 &value) {
   TW_UINT32 transferCount;
   bool current = GetCurrent(&TransferCount, transferCount);
   value = (TW_UINT16) transferCount;
   return current;
 }
 
-void TwainApp::SetTransferCount(const TW_INT16 value) {
+void Application::SetTransferCount(const TW_INT16 value) {
   SetCapabilityOneValue(CAP_XFERCOUNT, value, TWTY_INT16);
 
   if (GetCapability(TransferCount) != TWCC_SUCCESS) {
@@ -1934,7 +1934,7 @@ void TwainApp::SetTransferCount(const TW_INT16 value) {
   }
 }
 
-TW_UINT16 TwainApp::callDsmControl(
+TW_UINT16 Application::callDsmControl(
   TW_UINT16 dataArgumentType,
   TW_UINT16 message,
   TW_MEMREF pData
@@ -1948,7 +1948,7 @@ TW_UINT16 TwainApp::callDsmControl(
     pData);
 }
 
-bool TwainApp::isDsmClosed() const {
+bool Application::isDsmClosed() const {
   bool isClosed = CurrentDsmState < DsmState::Open;
   if (isClosed) {
     PrintMessage("The DSM has not been opened, open it first\n");
@@ -1957,7 +1957,7 @@ bool TwainApp::isDsmClosed() const {
   return isClosed;
 }
 
-bool TwainApp::isDataSourceClosed() const {
+bool Application::isDataSourceClosed() const {
   bool isClosed = CurrentDsmState < DsmState::DataSourceLoaded;
   if (isClosed) {
     PrintMessage("You need to open a data source first.\n");
@@ -1966,7 +1966,7 @@ bool TwainApp::isDataSourceClosed() const {
   return isClosed;
 }
 
-void TwainApp::setImageResolution(
+void Application::setImageResolution(
   const TW_UINT16 capabilityId,
   const pTW_FIX32 pValue
 ) {
@@ -1996,7 +1996,7 @@ void TwainApp::setImageResolution(
   }
 }
 
-string TwainApp::validSavePath(string savePath) {
+string Application::validSavePath(string savePath) {
   auto savePathLen = strlen(savePath.c_str());
   if (savePathLen) {
     if (savePath[savePathLen - 1] != kPATH_SEPARATOR) {

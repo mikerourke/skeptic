@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_TWAINSTRING_H
-#define TWAINFUL_TWAINSTRING_H
+#ifndef SKEPTIC_TWAINSTRING_H
+#define SKEPTIC_TWAINSTRING_H
 
 #pragma once
 
@@ -20,4 +20,4 @@ const char *ImageFileFormatToExtension(TW_UINT16 imageFileFormat);
 
 const char *TwainTypeToString(TW_UINT16 type);
 
-#endif //TWAINFUL_TWAINSTRING_H
+#endif //SKEPTIC_TWAINSTRING_H

@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_COMMONTWAIN_H
-#define TWAINFUL_COMMONTWAIN_H
+#ifndef SKEPTIC_COMMONTWAIN_H
+#define SKEPTIC_COMMONTWAIN_H
 
 #include "Common.h"
 
@@ -284,4 +284,4 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_FRAME &value);
 */
 int GetTwainTypeSize(TW_UINT16 itemType);
 
-#endif //TWAINFUL_COMMONTWAIN_H
+#endif //SKEPTIC_COMMONTWAIN_H

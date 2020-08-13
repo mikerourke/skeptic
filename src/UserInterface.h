@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_USERINTERFACE_H
-#define TWAINFUL_USERINTERFACE_H
+#ifndef SKEPTIC_USERINTERFACE_H
+#define SKEPTIC_USERINTERFACE_H
 
 #pragma once
 
@@ -17,4 +17,4 @@ void PrintCapability(TW_UINT16 id, pTW_ONEVALUE pCapability);
 
 void PrintCapability(TW_UINT16 id, pTW_ENUMERATION pCapability);
 
-#endif //TWAINFUL_USERINTERFACE_H
+#endif //SKEPTIC_USERINTERFACE_H

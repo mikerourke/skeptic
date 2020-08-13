@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_DSMINTERFACE_H
-#define TWAINFUL_DSMINTERFACE_H
+#ifndef SKEPTIC_DSMINTERFACE_H
+#define SKEPTIC_DSMINTERFACE_H
 
 #pragma once
 
@@ -88,4 +88,4 @@ TW_MEMREF LockDsmMemory(TW_HANDLE memoryHandle);
 */
 void UnlockDsmMemory(TW_HANDLE memoryHandle);
 
-#endif //TWAINFUL_DSMINTERFACE_H
+#endif //SKEPTIC_DSMINTERFACE_H

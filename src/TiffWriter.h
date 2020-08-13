@@ -36,8 +36,8 @@
 * @date October 2007
 */
 
-#ifndef TWAINFUL_TIFFWRITER_H
-#define TWAINFUL_TIFFWRITER_H
+#ifndef SKEPTIC_TIFFWRITER_H
+#define SKEPTIC_TIFFWRITER_H
 
 #include <string>
 #include <fstream>
@@ -231,4 +231,4 @@ protected:
   ofstream *m_pImageStream;                 /**< The output stream to write the file to */
 };
 
-#endif //TWAINFUL_TIFFWRITER_H
+#endif //SKEPTIC_TIFFWRITER_H

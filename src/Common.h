@@ -1,5 +1,5 @@
-#ifndef TWAINFUL_COMMON_H
-#define TWAINFUL_COMMON_H
+#ifndef SKEPTIC_COMMON_H
+#define SKEPTIC_COMMON_H
 
 #include <cassert>
 #include <climits>
@@ -25,4 +25,4 @@ inline int Printf(char *targetString, size_t n, const char *format, ...) {
   return result;
 }
 
-#endif //TWAINFUL_COMMON_H
+#endif //SKEPTIC_COMMON_H

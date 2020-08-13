@@ -1,12 +1,12 @@
 #include <iostream>
 #include <semaphore.h>
 #include "CommonTwain.h"
-#include "TwainApp.h"
+#include "Application.h"
 #include "UserInterface.h"
 
 using namespace std;
 
-TwainApp *gpTwainApplication;
+Application *gpApplication;
 
 /**
  * Callback function for DS. This is a callback function that will be called by
@@ -28,7 +28,7 @@ FAR PASCAL TW_UINT16 DSMCallback(
   UNUSEDARG(dataArgumentType);
   UNUSEDARG(pData);
 
-  if (pOrigin == nullptr || pOrigin->Id != gpTwainApplication->GetDataSource()->Id) {
+  if (pOrigin == nullptr || pOrigin->Id != gpApplication->GetDataSource()->Id) {
     return TWRC_FAILURE;
   }
 
@@ -37,8 +37,8 @@ FAR PASCAL TW_UINT16 DSMCallback(
     case MSG_CLOSEDSREQ:
     case MSG_CLOSEDSOK:
     case MSG_NULL:
-      gpTwainApplication->DataSourceMessage = message;
-      sem_post(&(gpTwainApplication->TwainEvent));
+      gpApplication->DataSourceMessage = message;
+      sem_post(&(gpApplication->TwainEvent));
       break;
 
     default:
@@ -62,7 +62,7 @@ int main(int argc, char *argv[]) {
 
   cout << "YAY";
 
-  gpTwainApplication = new TwainApp();
+  gpApplication = new Application();
 
   signal(SIGINT, &onSigInt);
 
@@ -81,17 +81,17 @@ int main(int argc, char *argv[]) {
     } else if (input == "h") {
       PrintOptions();
     } else if (input == "cdsm") {
-      gpTwainApplication->ConnectDsm();
+      gpApplication->ConnectDsm();
     } else if (input == "xdsm") {
-      gpTwainApplication->DisconnectDsm();
+      gpApplication->DisconnectDsm();
     } else {
       PrintOptions();
     }
   }
 
-  gpTwainApplication->Exit();
-  delete gpTwainApplication;
-  gpTwainApplication = nullptr;
+  gpApplication->Exit();
+  delete gpApplication;
+  gpApplication = nullptr;
 
   return ret;
 }

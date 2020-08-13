@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.17)
-project(twainful)
+project(skeptic)
 
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
@@ -17,7 +17,7 @@ endif(FreeImage_FOUND)
 include_directories(include)
 include_directories(${FreeImage_INCLUDE_DIRS})
 
-add_executable(twainful
+add_executable(skeptic
     src/Common.h
     src/CommonTwain.cpp
     src/CommonTwain.h
@@ -27,11 +27,11 @@ add_executable(twainful
     src/main.h
     src/TiffWriter.cpp
     src/TiffWriter.h
-    src/TwainApp.cpp
-    src/TwainApp.h
+    src/Application.cpp
+    src/Application.h
     src/TwainString.cpp
     src/TwainString.h
     src/UserInterface.cpp
     src/UserInterface.h)
 
-target_link_libraries(twainful ${FreeImage_LIBRARIES})
+target_link_libraries(skeptic ${FreeImage_LIBRARIES})

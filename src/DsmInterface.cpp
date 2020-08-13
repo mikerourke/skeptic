@@ -10,12 +10,13 @@ DSMENTRYPROC gpDsmEntryProc = nullptr;
 
 TW_ENTRYPOINT gDsmEntryPoint = {0};
 
-TW_UINT16 DsmEntry(pTW_IDENTITY pOrigin,
-                   pTW_IDENTITY pDest,
-                   TW_UINT32 dataGroup,
-                   TW_UINT16 dataArgumentType,
-                   TW_UINT16 message,
-                   TW_MEMREF pData) {
+TW_UINT16 DsmEntry(
+  pTW_IDENTITY pOrigin,
+  pTW_IDENTITY pDest,
+  TW_UINT32 dataGroup,
+  TW_UINT16 dataArgumentType,
+  TW_UINT16 message,
+  TW_MEMREF pData) {
   TW_UINT16 ret = TWRC_FAILURE;
 
   if (gpDsmLibrary == nullptr) {
@@ -68,14 +69,14 @@ bool LoadDsmLibrary() {
     "DSM_Entry",
     kCFStringEncodingUTF8);
 
-  void* fp = CFBundleGetFunctionPointerForName(bundle, cfFuncName);
+  void *fp = CFBundleGetFunctionPointerForName(bundle, cfFuncName);
   if (!fp) {
     cerr << "Function not found!" << endl;
   } else {
     cout << "Got function!" << fp << endl;
   }
 
-  gpDsmEntryProc = (DSMENTRYPROC)fp;
+  gpDsmEntryProc = (DSMENTRYPROC) fp;
 
   CFRelease(CFTypeRef(cfFuncName));
 

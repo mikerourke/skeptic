@@ -2,7 +2,9 @@
 #include <cstring>
 #include <cassert>
 #include <cstdio>
+
 #include "FreeImage.h"
+#include "TiffWriter.h"
 #include "TwainApp.h"
 #include "TwainString.h"
 
@@ -755,7 +757,205 @@ void TwainApp::InitiateFileTransfer(TW_UINT16 fileFormat) {
 }
 
 void TwainApp::InitiateMemoryTransfer() {
+  // For memory transfers, the FreeImage library will not be used, instead a
+  // TIFF will be progressively written. This method was chosen because it
+  // is possible that a 4GB image could be transferred and an image of that
+  // size can not fit in most systems memory.
+  PrintMessage("Starting a TWSX_MEMORY transfer...\n");
 
+  TiffWriter *pTiffImage = nullptr;
+  TW_STR255 outFileName;
+  TW_SETUPMEMXFER sourcesBufferSizes;
+  bool transfersPending = true;
+  TW_UINT16 returnCode = TWRC_SUCCESS;
+  string savePath = validSavePath(mSavePath);
+
+  while (transfersPending) {
+    mTransferCount++;
+    memset(outFileName, 0, sizeof(outFileName));
+
+    if (!UpdateImageInfo()) {
+      break;
+    }
+    // The data returned by ImageInfo can be used to determine if this image is wanted.
+    // If it is not then DG_CONTROL / DAT_PENDINGXFERS / MSG_ENDXFER can be
+    // used to skip to the next image.
+
+    // Set the filename to save to
+    Printf(
+      reinterpret_cast<char *>(outFileName),
+      sizeof(outFileName),
+      "%sFROM_SCANNER_%06dM.tif",
+      savePath.c_str(),
+      mTransferCount);
+
+    // Get the buffer sizes that the source wants to use:
+    PrintMessage("Getting the buffer sizes...\n");
+    memset(&sourcesBufferSizes, 0, sizeof(sourcesBufferSizes));
+
+    returnCode = CallDsm(
+      DG_CONTROL,
+      DAT_SETUPMEMXFER,
+      MSG_GET,
+      (TW_MEMREF) &(sourcesBufferSizes));
+
+    if (TWRC_SUCCESS != returnCode) {
+      PrintError("Error while trying to get the buffer sizes from the source!", mpDataSource);
+      break;
+    }
+
+    // Setup a buffer to hold the strip from the data source. This buffer is a
+    // template that will be used to reset the real buffer before each call to
+    // get a strip:
+    TW_IMAGEMEMXFER imageMemTransfer;
+    imageMemTransfer.Compression = TWON_DONTCARE16;
+    imageMemTransfer.BytesPerRow = TWON_DONTCARE32;
+    imageMemTransfer.Columns = TWON_DONTCARE32;
+    imageMemTransfer.Rows = TWON_DONTCARE32;
+    imageMemTransfer.XOffset = TWON_DONTCARE32;
+    imageMemTransfer.YOffset = TWON_DONTCARE32;
+    imageMemTransfer.BytesWritten = TWON_DONTCARE32;
+
+    imageMemTransfer.Memory.Flags = TWMF_APPOWNS | TWMF_POINTER;
+    imageMemTransfer.Memory.Length = sourcesBufferSizes.Preferred;
+
+    auto memoryHandle = (TW_HANDLE) AllocDsmMemory(sourcesBufferSizes.Preferred);
+    if (memoryHandle == nullptr) {
+      PrintError("Error allocating memory");
+      break;
+    }
+
+    imageMemTransfer.Memory.TheMem = (TW_MEMREF) LockDsmMemory(memoryHandle);
+
+    // This is the real buffer that will be sent to the data source:
+    TW_IMAGEMEMXFER memTransferBuffer;
+
+    // This is set to true once one row has been successfully acquired. We have
+    // to track this because we can't transition to state 7 until a row has been
+    // received:
+    bool wasScanStarted = false;
+
+    int nBytePerRow = ((mImageInfo.ImageWidth * mImageInfo.BitsPerPixel) + 7) / 8;
+
+    // Now that the memory has been setup, get the data from the scanner:
+    PrintMessage("Starting the memory transfer...\n");
+    for (;;) {
+      // Reset the transfer buffer:
+      memcpy(&memTransferBuffer, &imageMemTransfer, sizeof(imageMemTransfer));
+
+      // Clear the row data buffer:
+      memset(memTransferBuffer.Memory.TheMem, 0, memTransferBuffer.Memory.Length);
+
+      // Get the row data:
+      returnCode = CallDsm(
+        DG_IMAGE,
+        DAT_IMAGEMEMXFER,
+        MSG_GET,
+        (TW_MEMREF) &(memTransferBuffer));
+
+      if (returnCode == TWRC_SUCCESS || returnCode == TWRC_XFERDONE) {
+        if (!wasScanStarted) {
+          // The state can be changed to state 7 now that we have successfully
+          // received at least one strip:
+          CurrentDsmState = DsmState::StripReceived;
+          wasScanStarted = true;
+
+          // Write the TIFF header now that all info needed for the header has
+          // been received:
+          pTiffImage = new TiffWriter(
+            reinterpret_cast<char *>(outFileName),
+            mImageInfo.ImageWidth,
+            mImageInfo.ImageLength,
+            mImageInfo.BitsPerPixel,
+            nBytePerRow);
+
+          pTiffImage->setXResolution(mImageInfo.XResolution.Whole, 1);
+          pTiffImage->setYResolution(mImageInfo.YResolution.Whole, 1);
+
+          pTiffImage->writeImageHeader();
+        }
+
+        char *pbuf = reinterpret_cast<char *>(memTransferBuffer.Memory.TheMem);
+
+        // write the received image data to the image file
+        for (unsigned int x = 0; x < memTransferBuffer.Rows; ++x) {
+          pTiffImage->WriteTIFFData(pbuf, nBytePerRow);
+          pbuf += memTransferBuffer.BytesPerRow;
+        }
+
+        if (returnCode == TWRC_XFERDONE) {
+          // Deleting the TiffWriter object will close the file:
+          if (pTiffImage) {
+            delete pTiffImage;
+            pTiffImage = nullptr;
+          }
+
+          PrintMessage("File \"%s\" saved...\n", outFileName);
+          UpdateExtImageInfo();
+          break;
+        }
+      } else if (returnCode == TWRC_CANCEL) {
+        PrintError(
+          "Canceled transfer while trying to get a strip of data from the source!",
+          mpDataSource);
+        break;
+      } else if (returnCode == TWRC_FAILURE) {
+        PrintError(
+          "Error while trying to get a strip of data from the source!",
+          mpDataSource);
+        break;
+      }
+    }
+
+    if (pTiffImage) {
+      delete pTiffImage;
+      pTiffImage = nullptr;
+    }
+
+    // Cleanup memory used to transfer image:
+    UnlockDsmMemory(memoryHandle);
+    FreeDsmMemory(memoryHandle);
+
+    if (returnCode != TWRC_XFERDONE) {
+      // We were not able to transfer an image don't try to transfer more:
+      break;
+    }
+
+    // The transfer is done. Tell the source:
+    PrintMessage("Checking to see if there are more images to transfer...\n");
+    TW_PENDINGXFERS pendingTransfers;
+    memset(&pendingTransfers, 0, sizeof(pendingTransfers));
+
+    returnCode = CallDsm(
+      DG_CONTROL,
+      DAT_PENDINGXFERS,
+      MSG_ENDXFER,
+      (TW_MEMREF) &pendingTransfers);
+
+    if (returnCode == TWRC_SUCCESS) {
+      PrintMessage("Remaining images to transfer: %u\n", pendingTransfers.Count);
+      if (pendingTransfers.Count == 0) {
+        // Nothing left to transfer, finished.
+        transfersPending = false;
+      }
+    } else {
+      PrintError("Failed to properly end the transfer", mpDataSource);
+      transfersPending = false;
+    }
+
+  }
+
+  // Check to see if we left the scan loop before we were actually done scanning
+  // This will happen if we had an error. We need to let the DS know we are not
+  // going to transfer more images:
+  if (transfersPending) {
+    DoAbortTransfer();
+  }
+
+  // Adjust our state now that the scanning session is done:
+  CurrentDsmState = DsmState::DataSourceEnabled;
+
+  PrintMessage("Memory transfer complete!\n");
 }
 
 TW_UINT16 TwainApp::DoAbortTransfer() {

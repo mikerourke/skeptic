@@ -2,11 +2,11 @@
 
 #define kTEMP_BUFFER_SIZE 1024
 
-char * nextTempBuffer() {
+char *nextTempBuffer() {
   static char tempBuffer[3][kTEMP_BUFFER_SIZE];
-  static int  bufferIndex = 0;
+  static int bufferIndex = 0;
 
-  if(++bufferIndex >= 3) {
+  if (++bufferIndex >= 3) {
     bufferIndex = 0;
   }
 
@@ -15,8 +15,8 @@ char * nextTempBuffer() {
   return tempBuffer[bufferIndex];
 }
 
-char * unknownValue(const char* fieldName, const TW_UINT16 value) {
-  char * buffer = nextTempBuffer();
+char *unknownValue(const char *fieldName, const TW_UINT16 value) {
+  char *buffer = nextTempBuffer();
   Printf(
     buffer,
     kTEMP_BUFFER_SIZE,
@@ -26,8 +26,8 @@ char * unknownValue(const char* fieldName, const TW_UINT16 value) {
   return buffer;
 }
 
-const char* CapabilityToString(const TW_UINT16 capability) {
-  switch(capability) {
+const char *CapabilityToString(const TW_UINT16 capability) {
+  switch (capability) {
     case ICAP_AUTODISCARDBLANKPAGES:
       return "ICAP_AUTODISCARDBLANKPAGES";
     case CAP_CUSTOMBASE:
@@ -480,8 +480,8 @@ const char* CapabilityToString(const TW_UINT16 capability) {
   }
 }
 
-const char* ConditionCodeToString(const TW_UINT16 conditionCode) {
-  switch(conditionCode) {
+const char *ConditionCodeToString(const TW_UINT16 conditionCode) {
+  switch (conditionCode) {
     case TWCC_SUCCESS:
       return "TWCC_SUCCESS";
 
@@ -571,8 +571,8 @@ const char* ConditionCodeToString(const TW_UINT16 conditionCode) {
   }
 }
 
-const char* ImageFileFormatToExtension(const TW_UINT16 imageFileFormat) {
-  switch(imageFileFormat) {
+const char *ImageFileFormatToExtension(const TW_UINT16 imageFileFormat) {
+  switch (imageFileFormat) {
     case TWFF_PICT:
       return ".pict";
 

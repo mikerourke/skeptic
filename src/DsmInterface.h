@@ -14,6 +14,7 @@ enum class DsmState {
   DataSourceLoaded = 4,
   DataSourceEnabled = 5,
   ReadyToScan = 6,
+  StripReceived = 7,
 };
 
 /**

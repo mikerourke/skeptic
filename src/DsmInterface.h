@@ -3,9 +3,9 @@
 
 #pragma once
 
-#include "twain.h"
+#include <TWAIN/TWAIN.h>
 
-#define kDSM_LIBRARY_PATH "/Library/Frameworks/TWAINDSM.framework"
+#define kDSM_LIBRARY_PATH "/System/Library/Frameworks/TWAIN.framework"
 
 enum class DsmState {
   Unknown = 1,
@@ -60,32 +60,5 @@ TW_UINT16 DsmEntry(
   TW_UINT16 dataArgumentType,
   TW_UINT16 message,
   TW_MEMREF pData);
-
-/**
-* Allocate global memory
-* @param[in] memorySize Size of memory to allocate.
-* @return TW_HANDLE to the memory allocated.
-*/
-TW_HANDLE AllocDsmMemory(TW_UINT32 memorySize);
-
-/**
-* Free previously allocated global memory
-* @param[in] memoryHandle TW_HANDLE to the memory needing free.
-*/
-void FreeDsmMemory(TW_HANDLE memoryHandle);
-
-/**
-* Lock global memory from being updated by others. return a pointer to the
-* memory so we can update it.
-* @param[in] memoryHandle TW_HANDLE to the memory to update.
-* @return TW_MEMREF pointer to the memory.
-*/
-TW_MEMREF LockDsmMemory(TW_HANDLE memoryHandle);
-
-/**
-* Unlock global memory after locking. to allow updating by others.
-* @param[in] memoryHandle TW_HANDLE to memory returned by AllocDsmMemory
-*/
-void UnlockDsmMemory(TW_HANDLE memoryHandle);
 
 #endif //SKEPTIC_DSMINTERFACE_H

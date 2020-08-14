@@ -28,7 +28,7 @@ bool operator==(const TW_FIX32 &fix1, const TW_FIX32 &fix2);
 void PrintMessage(const char *pContents, ...);
 
 /** Populated TW_IDENTITY for the Application constructor */
-TW_IDENTITY AppIdentity();
+pTW_IDENTITY AppIdentity();
 
 class Application {
 public:
@@ -54,6 +54,8 @@ public:
 
   void DisconnectDsm();
 
+  TW_UINT16 CallBack(TW_INT16 message);
+
   pTW_IDENTITY GetDefaultDataSource();
 
   pTW_IDENTITY SetDefaultDataSource(unsigned int index);
@@ -73,10 +75,6 @@ public:
   void DisableDataSource();
 
   bool UpdateImageInfo();
-
-  void UpdateExtImageInfo();
-
-  void InitiateNativeTransfer();
 
   void InitiateFileTransfer(TW_UINT16 fileFormat = TWFF_TIFF);
 
@@ -103,12 +101,8 @@ public:
 
   TW_INT16 QuerySupportCapability(TW_UINT16 id, TW_UINT32 &querySupport);
 
-  TW_INT16 GetLabel(TW_UINT16 capabilityId, string &label);
-
-  TW_INT16 GetHelp(TW_UINT16 capabilityId, string &help);
-
   pTW_IDENTITY GetAppIdentity() {
-    return &mIdentity;
+    return mIdentity;
   }
 
   pTW_IMAGEINFO GetImageInfo() {
@@ -223,7 +217,7 @@ private:
   string mExtImageInfoString;
   TW_UINT16 mGetHelpSupported;
   TW_UINT16 mGetLabelSupported;
-  TW_IDENTITY mIdentity;
+  TW_IDENTITY *mIdentity;
   TW_IMAGEINFO mImageInfo;
   pTW_IDENTITY mpDataSource;
   pTW_EXTIMAGEINFO mpExtImageInfo;

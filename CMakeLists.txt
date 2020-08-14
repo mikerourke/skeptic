@@ -1,21 +1,23 @@
 cmake_minimum_required(VERSION 3.17)
 project(skeptic)
 
+#set (CMAKE_OSX_ARCHITECTURES "i386")
 set(CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/cmake ${CMAKE_MODULE_PATH})
 
 set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_EXE_LINKER_FLAGS "-framework Foundation -framework CoreFoundation -w")
+#set(CMAKE_EXE_LINKER_FLAGS "-framework Carbon -w")
 
 # check for freeimage
-find_package(FreeImage)
-if(FreeImage_FOUND)
-    set(STATUS_FREEIMG "OK")
-else(FreeImage_FOUND)
-    set(STATUS_FREEIMG "not found")
-endif(FreeImage_FOUND)
+#find_package(FreeImage)
+#if(FreeImage_FOUND)
+#    set(STATUS_FREEIMG "OK")
+#else(FreeImage_FOUND)
+#    set(STATUS_FREEIMG "not found")
+#endif(FreeImage_FOUND)
 
 include_directories(include)
-include_directories(${FreeImage_INCLUDE_DIRS})
+#include_directories(${FreeImage_INCLUDE_DIRS})
 
 add_executable(skeptic
     src/Common.h
@@ -34,4 +36,4 @@ add_executable(skeptic
     src/UserInterface.cpp
     src/UserInterface.h)
 
-target_link_libraries(skeptic ${FreeImage_LIBRARIES})
+#target_link_libraries(skeptic ${FreeImage_LIBRARIES})

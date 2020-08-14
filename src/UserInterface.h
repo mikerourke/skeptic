@@ -3,7 +3,7 @@
 
 #pragma once
 
-#include "twain.h"
+#include <TWAIN/TWAIN.h>
 #include "main.h"
 #include "CommonTwain.h"
 

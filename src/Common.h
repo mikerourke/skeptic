@@ -9,7 +9,7 @@
 #include <cstring>
 #include <cwchar>
 #include <string>
-#include "twain.h"
+#include <TWAIN/TWAIN.h>
 
 /** Solution for unused arguments */
 #define UNUSEDARG(x) (void)x

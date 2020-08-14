@@ -9,8 +9,6 @@ CFBundleRef gpDsmLibrary = nullptr;
 
 DSMENTRYPROC gpDsmEntryProc = nullptr;
 
-TW_ENTRYPOINT gDsmEntryPoint = {0};
-
 TW_UINT16 DsmEntry(
   pTW_IDENTITY pOrigin,
   pTW_IDENTITY pDest,
@@ -18,28 +16,20 @@ TW_UINT16 DsmEntry(
   TW_UINT16 dataArgumentType,
   TW_UINT16 message,
   TW_MEMREF pData) {
-  cout << "Loading the DSM library..." << endl;
-
   TW_UINT16 returnCode = TWRC_FAILURE;
 
-  if (gpDsmLibrary == nullptr) {
-    if (!LoadDsmLibrary()) {
-      cerr << "Could not load the DSM library" << endl;
-      return 0;
-    }
+  if (!LoadDsmLibrary()) {
+    cerr << "Could not load the DSM library" << endl;
+    return 0;
   }
 
-  if (gpDsmEntryProc != nullptr) {
-    cout << "Loading the DSM entry proc..." << endl;
-
-    returnCode = gpDsmEntryProc(
-      pOrigin,
-      pDest,
-      dataGroup,
-      dataArgumentType,
-      message,
-      pData);
-  }
+  returnCode = gpDsmEntryProc(
+    pOrigin,
+    pDest,
+    dataGroup,
+    dataArgumentType,
+    message,
+    pData);
 
   return returnCode;
 }
@@ -54,20 +44,20 @@ bool LoadDsmLibrary() {
     kDSM_LIBRARY_PATH,
     kCFStringEncodingUTF8);
 
-  cout << "Got String Ref!" << std::endl;
+//  cout << "Got String Ref!" << std::endl;
 
   CFURLRef bundleUrl = CFURLCreateWithFileSystemPath(
     kCFAllocatorDefault,
     cfLibraryPath,
     kCFURLPOSIXPathStyle,
     true);
-  cout << "Got Bundle URL!" << std::endl;
+//  cout << "Got Bundle URL!" << std::endl;
 
   CFBundleRef bundle = CFBundleCreate(kCFAllocatorDefault, bundleUrl);
   if (bundle == nullptr) {
     cerr << "Bundle not loaded!" << endl;
   } else {
-    cout << "Got bundle!" << endl;
+//    cout << "Got bundle!" << endl;
   }
 
   gpDsmLibrary = bundle;
@@ -84,10 +74,10 @@ bool LoadDsmLibrary() {
   if (!fp) {
     cerr << "Function not found!" << endl;
   } else {
-    cout << "Got function!" << endl;
+//    cout << "Got function!" << endl;
   }
 
-  gpDsmEntryProc = (DSMENTRYPROC) fp;
+  gpDsmEntryProc = (DSMENTRYPROC)fp;
 
   CFRelease(CFTypeRef(cfFuncName));
 
@@ -103,32 +93,3 @@ void UnloadDsmLibrary() {
     std::cout << "Released!" << std::endl;
   }
 }
-
-TW_HANDLE AllocDsmMemory(TW_UINT32 memorySize) {
-  if (gDsmEntryPoint.DSM_MemAllocate) {
-    return gDsmEntryPoint.DSM_MemAllocate(memorySize);
-  }
-
-  return nullptr;
-}
-
-void FreeDsmMemory(TW_HANDLE memoryHandle) {
-  if (gDsmEntryPoint.DSM_MemFree) {
-    gDsmEntryPoint.DSM_MemFree(memoryHandle);
-  }
-}
-
-TW_MEMREF LockDsmMemory(TW_HANDLE memoryHandle) {
-  if (gDsmEntryPoint.DSM_MemLock) {
-    return gDsmEntryPoint.DSM_MemLock(memoryHandle);
-  }
-
-  return nullptr;
-}
-
-void UnlockDsmMemory(TW_HANDLE memoryHandle) {
-  if (gDsmEntryPoint.DSM_MemUnlock) {
-    gDsmEntryPoint.DSM_MemUnlock(memoryHandle);
-  }
-}
-

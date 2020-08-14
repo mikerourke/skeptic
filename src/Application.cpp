@@ -2,15 +2,13 @@
 #include <cstring>
 #include <cassert>
 #include <cstdio>
+#include <CoreFoundation/CoreFoundation.h>
 
-#include "FreeImage.h"
 #include "TiffWriter.h"
 #include "Application.h"
 #include "TwainString.h"
 
-extern TW_ENTRYPOINT gDsmEntryPoint;
-
-FAR PASCAL TW_UINT16 DSMCallback(
+FAR TW_UINT16 DSMCallback(
   pTW_IDENTITY pOrigin,
   pTW_IDENTITY pDest,
   TW_UINT32 dataGroup,
@@ -30,37 +28,23 @@ void PrintMessage(const char *const pContents, ...) {
   vsnprintf(buffer, 200, pContents, vaList);
   va_end(vaList);
 
-  cout << buffer;
+  cout << buffer << endl;
 }
 
-/**
- * Output error messages for Free Image Format.
- * @param[in] format Free Image Format
- * @param[in] message error string to display
- */
-void FreeImageErrorHandler(FREE_IMAGE_FORMAT format, const char *message) {
-  PrintMessage(
-    "\n*** %s Format\n%s ***\n", FreeImage_GetFormatFromFIF(format),
-    message);
-}
+pTW_IDENTITY AppIdentity() {
+  pTW_IDENTITY identity;
 
-TW_IDENTITY AppIdentity() {
-  TW_IDENTITY identity;
-
-  identity.Id = nullptr;
-  identity.Version.MajorNum = 2;
-  identity.Version.MinorNum = 0;
-  identity.Version.Language = TWLG_USA;
-  identity.Version.Country = TWCY_USA;
-  // FIXME: This is causing a segfault.
-//  strcpy(reinterpret_cast<char *>(identity.Version.Info), "2.0.9");
-  identity.ProtocolMajor = TWON_PROTOCOLMAJOR;
-  identity.ProtocolMinor = TWON_PROTOCOLMINOR;
-  identity.SupportedGroups = DF_APP2 | DG_IMAGE | DG_CONTROL;
-  // TODO: Change these to Epson specifics.
-  strcpy(reinterpret_cast<char *>(identity.Manufacturer), "Manufacturer");
-  strcpy(reinterpret_cast<char *>(identity.ProductFamily), "Product Family");
-  strcpy(reinterpret_cast<char *>(identity.ProductName), "Product Name");
+  identity->Id = nullptr;
+  identity->Version.MajorNum = 1;
+  identity->Version.MinorNum = 0;
+  identity->Version.Language = TWLG_USA;
+  identity->Version.Country = TWCY_USA;
+  identity->ProtocolMajor = TWON_PROTOCOLMAJOR;
+  identity->ProtocolMinor = TWON_PROTOCOLMINOR;
+  identity->SupportedGroups = DG_CONTROL | DG_IMAGE;
+  strcpy((char *) identity->Manufacturer, "Skeptic");
+  strcpy((char *) identity->ProductFamily, "Skeptic");
+  strcpy((char *) identity->ProductName, "Skeptic");
 
   return identity;
 }
@@ -71,16 +55,13 @@ Application::Application() :
   TwainEvent(0),
   mGetHelpSupported(TWCC_SUCCESS),
   mGetLabelSupported(TWCC_SUCCESS),
-  mIdentity(AppIdentity()),
   mpDataSource(nullptr),
   mpExtImageInfo(nullptr),
   mTransferCount(0) {
-  FreeImage_Initialise();
-  FreeImage_SetOutputMessage(FreeImageErrorHandler);
+  mIdentity = AppIdentity();
 }
 
 Application::~Application() {
-  FreeImage_DeInitialise();
   UnloadDsmLibrary();
   mDataSources.erase(mDataSources.begin(), mDataSources.end());
 }
@@ -92,7 +73,7 @@ TW_UINT16 Application::CallDsm(
   TW_MEMREF pData
 ) {
   return DsmEntry(
-    &mIdentity,
+    mIdentity,
     mpDataSource,
     dataGroup,
     dataArgumentType,
@@ -105,9 +86,9 @@ TW_INT16 Application::PrintError(const string &errorMessage, pTW_IDENTITY pDestI
 
   cerr << "Application: ";
   if (errorMessage.length() > 0) {
-    cerr << errorMessage;
+    cerr << errorMessage << endl;
   } else {
-    cerr << "An error has occurred.";
+    cerr << "An error has occurred." << endl;
   }
 
   if (GetConditionCode(pDestId, conditionCode) == TWRC_SUCCESS) {
@@ -122,7 +103,7 @@ TW_UINT16 Application::GetConditionCode(pTW_IDENTITY pDestId, TW_INT16 &conditio
   memset(&status, 0, sizeof(TW_STATUS));
 
   TW_UINT16 returnCode = DsmEntry(
-    &mIdentity,
+    mIdentity,
     pDestId,
     DG_CONTROL,
     DAT_STATUS,
@@ -179,24 +160,10 @@ void Application::ConnectDsm() {
     return;
   }
 
-  if ((mIdentity.SupportedGroups & DF_DSM2) == DF_DSM2) {
-    gDsmEntryPoint.Size = sizeof(TW_ENTRYPOINT);
-
-    callResult = callDsmControl(
-      DAT_ENTRYPOINT,
-      MSG_OPENDSM,
-      (TW_MEMREF) &gDsmEntryPoint);
-    if (callResult != TWRC_SUCCESS) {
-      PrintMessage("DG_CONTROL / DAT_ENTRYPOINT / MSG_GET Failed: %d\n", callResult);
-      return;
-    }
-  }
-
   PrintMessage("Successfully opened the DSM\n");
   CurrentDsmState = DsmState::Open;
 
   mDataSources.erase(mDataSources.begin(), mDataSources.end());
-  GetDataSources();
 }
 
 void Application::DisconnectDsm() {
@@ -211,6 +178,23 @@ void Application::DisconnectDsm() {
   } else {
     PrintError("Failed to close the DSM");
   }
+}
+
+TW_UINT16 Application::CallBack(TW_INT16 message) {
+  TW_CALLBACK callback = { nullptr, nullptr, message };
+
+  switch (message) {
+    case MSG_XFERREADY:
+      return callDsmControl(
+        DAT_CALLBACK,
+        MSG_INVOKE_CALLBACK,
+        (TW_MEMREF) &callback);
+
+    default:
+      break;
+  }
+
+  return 0;
 }
 
 TW_IDENTITY gSource;
@@ -398,31 +382,53 @@ void Application::GetDataSources() {
 
   assert(mDataSources.empty() == true);
 
-  auto pushDataSource = [this](TW_UINT16 getMessage) {
-    TW_IDENTITY dataSource;
-    memset(&dataSource, 0, sizeof(TW_IDENTITY));
+  TW_IDENTITY dataSource;
+  memset(&dataSource, 0, sizeof(TW_IDENTITY));
 
-    TW_UINT16 returnCode = callDsmControl(
-      DAT_IDENTITY,
-      getMessage,
-      (TW_MEMREF) &dataSource);
-    if (returnCode == TWRC_SUCCESS) {
+  TW_UINT16 returnCode = callDsmControl(
+    DAT_IDENTITY,
+    MSG_GETFIRST,
+    (TW_MEMREF) &dataSource);
+
+  switch (returnCode) {
+    case TWRC_SUCCESS:
       mDataSources.push_back(dataSource);
-    } else if (returnCode == TWRC_FAILURE) {
+      do {
+        memset(&dataSource, 0, sizeof(TW_IDENTITY));
+        returnCode = callDsmControl(
+          DAT_IDENTITY,
+          MSG_GETNEXT,
+          (TW_MEMREF) &dataSource);
+
+        switch (returnCode) {
+          case TWRC_SUCCESS:
+            mDataSources.push_back(dataSource);
+            break;
+
+          case TWRC_ENDOFLIST:
+            break;
+
+          case TWRC_FAILURE:
+            PrintError("Failed to get the data source info!");
+            break;
+
+          default:
+            break;
+
+        }
+      } while (returnCode == TWRC_SUCCESS);
+      break;
+
+    case TWRC_ENDOFLIST:
+      break;
+
+    case TWRC_FAILURE:
       PrintError("Failed to get the data source info!");
-    }
+      break;
 
-    return returnCode;
-  };
-
-  TW_UINT16 returnCode = pushDataSource(MSG_GETFIRST);
-  if (returnCode == TWRC_ENDOFLIST) {
-    return;
+    default:
+      break;
   }
-
-  do {
-    returnCode = pushDataSource(MSG_GETNEXT);
-  } while (returnCode == TWRC_SUCCESS);
 }
 
 bool Application::EnableDataSource() {
@@ -490,152 +496,6 @@ bool Application::UpdateImageInfo() {
   }
 
   return returnCode == TWRC_SUCCESS;
-}
-
-void Application::InitiateNativeTransfer() {
-  PrintMessage("Starting a native transfer...\n");
-
-  TW_STR255 outFileName;
-  bool transfersPending = true;
-  TW_UINT16 returnCode = TWRC_SUCCESS;
-  string savePath = validSavePath(mSavePath);
-
-  while (transfersPending) {
-    mTransferCount++;
-    memset(outFileName, 0, sizeof(outFileName));
-
-    if (!UpdateImageInfo()) {
-      break;
-    }
-
-    TW_MEMREF imageHandle = nullptr;
-    PrintMessage("Starting the transfer...\n");
-
-    returnCode = CallDsm(
-      DG_IMAGE,
-      DAT_IMAGENATIVEXFER,
-      MSG_GET,
-      (TW_MEMREF) &imageHandle);
-    switch (returnCode) {
-      case TWRC_XFERDONE: {
-        /*
-       * Here we get a handle to a DIB. Save it to disk as a BMP. After saving
-       * it to disk, I could open it up again using FreeImage if I wanted to do
-       * more transforms on it or save it as a different format.
-       */
-        auto pDIB = (PBITMAPINFOHEADER) LockDsmMemory((TW_HANDLE) imageHandle);
-
-        if (pDIB == nullptr) {
-          PrintError("Unable to lock memory, transfer failed", mpDataSource);
-          break;
-        }
-
-        Printf(
-          reinterpret_cast<char *>(outFileName),
-          sizeof(outFileName),
-          "%sFROM_SCANNER_%06dN.bmp",
-          savePath.c_str(),
-          mTransferCount);
-
-        auto outputFile = fopen(reinterpret_cast<const char *>(outFileName), "wb");
-        if (outputFile == 0) {
-          perror("fopen");
-        } else {
-          DWORD paletteSize = 0;
-
-          switch (pDIB->biBitCount) {
-            case 1:
-              paletteSize = 2;
-              break;
-            case 8:
-              paletteSize = 256;
-              break;
-
-            case 24:
-              break;
-
-            default:
-              assert(0); // Not going to work!
-          }
-
-          // If the driver did not fill in the biSizeImage field, then compute it
-          // Each scan line of the image is aligned on a DWORD (32bit) boundary:
-          if (pDIB->biSizeImage == 0) {
-            auto widthBitCount = pDIB->biWidth * pDIB->biBitCount;
-            pDIB->biSizeImage = ((widthBitCount + 31 & ~31) / 8) * pDIB->biHeight;
-
-            // If a compression scheme is used the result may in fact be larger
-            // Increase the size to account for this:
-            if (pDIB->biCompression != 0) {
-              pDIB->biSizeImage = (pDIB->biSizeImage * 3) / 2;
-            }
-          }
-
-          auto rgbPaletteSize = sizeof(RGBQUAD) * paletteSize;
-          auto infoHeaderSize = sizeof(BITMAPINFOHEADER);
-          int imageSize = pDIB->biSizeImage + rgbPaletteSize + infoHeaderSize;
-
-          BitmapFileHeader bmpFileHeader = {0};
-          auto fileHeaderSize = sizeof(BitmapFileHeader);
-          bmpFileHeader.FileType = ((WORD) ('M' << 8) | 'B');
-          bmpFileHeader.FileSize = imageSize + fileHeaderSize;
-          bmpFileHeader.OffsetBits = fileHeaderSize + infoHeaderSize + rgbPaletteSize;
-
-          fwrite(&bmpFileHeader, 1, sizeof(BitmapFileHeader), outputFile);
-          fwrite(pDIB, 1, imageSize, outputFile);
-          fclose(outputFile);
-
-          PrintMessage("File \"%s\" saved...\n", outFileName);
-        }
-
-        UnlockDsmMemory((TW_HANDLE) imageHandle);
-        FreeDsmMemory((TW_HANDLE) imageHandle);
-        pDIB = nullptr;
-
-        UpdateExtImageInfo();
-
-        PrintMessage("Checking to see if there are more images to transfer...\n");
-        TW_PENDINGXFERS pendingTransfers;
-        memset(&pendingTransfers, 0, sizeof(pendingTransfers));
-
-        TW_UINT16 checkReturnCode = CallDsm(
-          DG_CONTROL,
-          DAT_PENDINGXFERS,
-          MSG_ENDXFER,
-          (TW_MEMREF) &pendingTransfers);
-        if (checkReturnCode == TWRC_SUCCESS) {
-          PrintMessage("Remaining images to transfer: %u\n", pendingTransfers.Count);
-
-          if (pendingTransfers.Count == 0) {
-            transfersPending = false;
-          }
-        } else {
-          PrintError("Failed to properly end the transfer", mpDataSource);
-          transfersPending = false;
-        }
-      }
-        break;
-
-      case TWRC_CANCEL:
-        PrintError("Canceled transfer image", mpDataSource);
-        break;
-
-      case TWRC_FAILURE:
-        PrintError("Failed to transfer image", mpDataSource);
-        break;
-
-      default:
-        break;
-
-    }
-  }
-
-  if (transfersPending) {
-    DoAbortTransfer();
-  }
-
-  CurrentDsmState = DsmState::DataSourceEnabled;
-  PrintMessage("Done!\n");
 }
 
 void Application::InitiateFileTransfer(TW_UINT16 fileFormat) {
@@ -709,8 +569,6 @@ void Application::InitiateFileTransfer(TW_UINT16 fileFormat) {
           MSG_GET,
           (TW_MEMREF) &fileTransfer);
         PrintMessage("File \"%s\" saved...\n", fileTransfer.FileName);
-
-        UpdateExtImageInfo();
 
         PrintMessage("Checking to see if there are more images to transfer...\n");
         TW_PENDINGXFERS pendingTransfers;
@@ -819,13 +677,13 @@ void Application::InitiateMemoryTransfer() {
     imageMemTransfer.Memory.Flags = TWMF_APPOWNS | TWMF_POINTER;
     imageMemTransfer.Memory.Length = sourcesBufferSizes.Preferred;
 
-    auto memoryHandle = (TW_HANDLE) AllocDsmMemory(sourcesBufferSizes.Preferred);
+    auto memoryHandle = (TW_HANDLE) sizeof(sourcesBufferSizes.Preferred);
     if (memoryHandle == nullptr) {
       PrintError("Error allocating memory");
       break;
     }
 
-    imageMemTransfer.Memory.TheMem = (TW_MEMREF) LockDsmMemory(memoryHandle);
+    imageMemTransfer.Memory.TheMem = (TW_MEMREF) memoryHandle;
 
     // This is the real buffer that will be sent to the data source:
     TW_IMAGEMEMXFER memTransferBuffer;
@@ -891,7 +749,6 @@ void Application::InitiateMemoryTransfer() {
           }
 
           PrintMessage("File \"%s\" saved...\n", outFileName);
-          UpdateExtImageInfo();
           break;
         }
       } else if (returnCode == TWRC_CANCEL) {
@@ -911,10 +768,6 @@ void Application::InitiateMemoryTransfer() {
       delete pTiffImage;
       pTiffImage = nullptr;
     }
-
-    // Cleanup memory used to transfer image:
-    UnlockDsmMemory(memoryHandle);
-    FreeDsmMemory(memoryHandle);
 
     if (returnCode != TWRC_XFERDONE) {
       // We were not able to transfer an image don't try to transfer more:
@@ -983,175 +836,6 @@ TW_UINT16 Application::DoAbortTransfer() {
   return returnCode;
 }
 
-void Application::UpdateExtImageInfo() {
-  int tableBarCodeExtImgInfo[] = {
-    TWEI_BARCODETYPE,
-    TWEI_BARCODETEXTLENGTH,
-    TWEI_BARCODETEXT,
-    TWEI_BARCODEX,
-    TWEI_BARCODEY,
-    TWEI_BARCODEROTATION,
-    TWEI_BARCODECONFIDENCE
-  };
-
-  int tableOtherExtImgInfo[] = {
-    TWEI_BOOKNAME,
-    TWEI_CHAPTERNUMBER,
-    TWEI_DOCUMENTNUMBER,
-    TWEI_PAGENUMBER,
-    TWEI_PAGESIDE,
-    TWEI_CAMERA,
-    TWEI_FRAMENUMBER,
-    TWEI_FRAME,
-    TWEI_PIXELFLAVOR,
-    TWEI_ENDORSEDTEXT,
-    TWEI_MAGTYPE,
-    TWEI_MAGDATA
-  };
-
-  int barCodeInfosCount = sizeof(tableBarCodeExtImgInfo) / sizeof(tableBarCodeExtImgInfo[0]);
-  int otherInfosCount = sizeof(tableOtherExtImgInfo) / sizeof(tableOtherExtImgInfo[0]);
-
-  TW_UINT16 returnCode = TWRC_SUCCESS;
-  mExtImageInfoString = "";
-
-  try {
-    TW_EXTIMAGEINFO extImageInfo;
-    extImageInfo.NumInfos = 1;
-    extImageInfo.Info[0].InfoID = TWEI_BARCODECOUNT;
-    extImageInfo.Info[0].NumItems = 0;
-    extImageInfo.Info[0].ItemType = TWTY_UINT32;
-    extImageInfo.Info[0].Item = 0;
-    extImageInfo.Info[0].ReturnCode = 0;
-
-    returnCode = CallDsm(
-      DG_IMAGE,
-      DAT_EXTIMAGEINFO,
-      MSG_GET,
-      (TW_MEMREF) &extImageInfo);
-    if (returnCode != TWRC_SUCCESS) {
-      mExtImageInfoString = "Not Supported";
-      return;
-    }
-
-    int currentInfo = 0;
-    int infoCount = 0;
-
-    if (extImageInfo.Info[0].ReturnCode == TWRC_SUCCESS) {
-      auto firstItem = (TW_UINT32) extImageInfo.Info[0].Item;
-      infoCount = (barCodeInfosCount * firstItem) + 1;
-    }
-
-    TW_CAPABILITY supportedExtImageInfo;
-    pTWArrayUInt16 pSupportedExtImageInfos = nullptr;
-
-    supportedExtImageInfo.Cap = ICAP_SUPPORTEDEXTIMAGEINFO;
-    supportedExtImageInfo.hContainer = nullptr;
-
-    GetCapability(supportedExtImageInfo);
-
-    if (supportedExtImageInfo.ConType == TWON_ARRAY) {
-      pSupportedExtImageInfos = (pTWArrayUInt16) LockDsmMemory(supportedExtImageInfo.hContainer);
-
-      if (pSupportedExtImageInfos->ItemType != TWTY_UINT16) {
-        UnlockDsmMemory(supportedExtImageInfo.hContainer);
-        pSupportedExtImageInfos = nullptr;
-      } else {
-        int extInfoCount = pSupportedExtImageInfos->NumItems;
-        bool wasAdded;
-
-        for (int index = 0; index < extInfoCount; index++) {
-          if (pSupportedExtImageInfos->ItemList[index] == TWEI_BARCODECOUNT) {
-            continue;
-          }
-
-          wasAdded = true;
-          for (int barcodeIndex = 0; barcodeIndex < barCodeInfosCount; barcodeIndex++) {
-            if (pSupportedExtImageInfos->ItemList[barcodeIndex] ==
-                tableBarCodeExtImgInfo[barcodeIndex]) {
-              wasAdded = false;
-              break;
-            }
-          }
-
-          if (wasAdded) {
-            extInfoCount++;
-          }
-        }
-      }
-    }
-
-    if (!pSupportedExtImageInfos) {
-      infoCount = otherInfosCount;
-    }
-
-    auto allocSize = sizeof(TW_EXTIMAGEINFO) + sizeof(TW_INFO) * (infoCount - 1);
-    TW_HANDLE extInfoHandle = AllocDsmMemory(allocSize);
-    auto *pExtImageInfo = (TW_EXTIMAGEINFO *) LockDsmMemory(extInfoHandle);
-    memset(pExtImageInfo, 0, allocSize);
-    pExtImageInfo->NumInfos = infoCount;
-
-    if (pSupportedExtImageInfos) {
-      int itemCount = pSupportedExtImageInfos->NumItems;
-      bool isAdded;
-
-      for (int index = 0; index < itemCount; index++) {
-        if (pSupportedExtImageInfos->ItemList[index] == TWEI_BARCODECOUNT) {
-          continue;
-        }
-
-        isAdded = true;
-        for (int barcodeIndex = 0; barcodeIndex < barCodeInfosCount; barcodeIndex++) {
-          if (pSupportedExtImageInfos->ItemList[index] == tableBarCodeExtImgInfo[barcodeIndex]) {
-            isAdded = false;
-            break;
-          }
-        }
-
-        if (isAdded) {
-          pExtImageInfo->Info[currentInfo++].InfoID = pSupportedExtImageInfos->ItemList[index];
-        }
-      }
-    } else {
-      for (int itemIndex = 0; itemIndex < otherInfosCount; itemIndex++) {
-        pExtImageInfo->Info[currentInfo++].InfoID = (TW_UINT16) tableOtherExtImgInfo[itemIndex];
-      }
-    }
-
-    if (extImageInfo.Info[0].ReturnCode == TWRC_SUCCESS) {
-      // Inform the DS how many Barcode items we can handle for each type:
-      pExtImageInfo->Info[currentInfo++] = extImageInfo.Info[0];
-
-      auto firstInfoCount = (unsigned int) extImageInfo.Info[0].Item;
-      for (unsigned int count = 0; count < firstInfoCount; count++) {
-        for (int barcodeIndex = 0; barcodeIndex < barCodeInfosCount; barcodeIndex++) {
-          pExtImageInfo->Info[currentInfo++].InfoID = (TW_UINT16) tableBarCodeExtImgInfo[barcodeIndex];
-        }
-      }
-    }
-
-    returnCode = CallDsm(
-      DG_IMAGE,
-      DAT_EXTIMAGEINFO,
-      MSG_GET,
-      (TW_MEMREF) pExtImageInfo);
-    if (returnCode != TWRC_SUCCESS) {
-      mExtImageInfoString = "Not Supported";
-      return;
-    }
-
-    for (int index = 0; index < infoCount; index++) {
-      if (pExtImageInfo->Info[index].ReturnCode != TWRC_INFONOTSUPPORTED) {
-        mExtImageInfoString = "";
-        // TODO: Finish this (line 1206).
-      }
-    }
-  } catch (const exception &e) {
-    cerr << "Error getting extended image info";
-    cerr << e.what();
-  }
-}
-
 TW_UINT16 Application::SetCapabilityOneValue(
   TW_UINT16 id,
   const int value,
@@ -1160,14 +844,14 @@ TW_UINT16 Application::SetCapabilityOneValue(
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ONEVALUE;
-  capability.hContainer = AllocDsmMemory(sizeof(TW_ONEVALUE));
+  capability.hContainer = (TW_HANDLE) sizeof(TW_ONEVALUE);
 
   if (capability.hContainer == nullptr) {
     PrintError("Error allocating memory");
     return TWRC_FAILURE;
   }
 
-  auto pOneValue = (pTW_ONEVALUE) LockDsmMemory(capability.hContainer);
+  auto pOneValue = (pTW_ONEVALUE) capability.hContainer;
   pOneValue->ItemType = twainType;
 
   switch (twainType) {
@@ -1211,10 +895,6 @@ TW_UINT16 Application::SetCapabilityOneValue(
   if (returnCode == TWRC_FAILURE) {
     PrintError("Could not set capability", mpDataSource);
   }
-
-  UnlockDsmMemory(capability.hContainer);
-  FreeDsmMemory(capability.hContainer);
-
   return returnCode;
 }
 
@@ -1222,14 +902,14 @@ TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FIX32 pValu
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ONEVALUE;
-  capability.hContainer = AllocDsmMemory(sizeof(TWOneValueFix32));
+  capability.hContainer = (TW_HANDLE) sizeof(TWOneValueFix32);
 
   if (capability.hContainer == nullptr) {
     PrintError("Error allocating memory");
     return TWRC_FAILURE;
   }
 
-  auto pOneValue = (pTWOneValueFix32) LockDsmMemory(capability.hContainer);
+  auto pOneValue = (pTWOneValueFix32) capability.hContainer;
   pOneValue->ItemType = TWTY_FIX32;
   pOneValue->Item = *pValue;
 
@@ -1242,9 +922,6 @@ TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FIX32 pValu
     PrintError("Could not set capability", mpDataSource);
   }
 
-  UnlockDsmMemory(capability.hContainer);
-  FreeDsmMemory(capability.hContainer);
-
   return returnCode;
 }
 
@@ -1252,14 +929,14 @@ TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FRAME pValu
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ONEVALUE;
-  capability.hContainer = AllocDsmMemory(sizeof(TWOneValueFrame));
+  capability.hContainer = (TW_HANDLE) sizeof(TWOneValueFrame);
 
   if (capability.hContainer == nullptr) {
     PrintError("Error allocating memory");
     return TWRC_FAILURE;
   }
 
-  auto pOneValue = (pTWOneValueFrame) LockDsmMemory(capability.hContainer);
+  auto pOneValue = (pTWOneValueFrame) (TW_HANDLE) capability.hContainer;
   pOneValue->ItemType = TWTY_FRAME;
   pOneValue->Item = *pValue;
 
@@ -1271,9 +948,6 @@ TW_UINT16 Application::SetCapabilityOneValue(TW_UINT16 id, const pTW_FRAME pValu
   if (returnCode == TWRC_FAILURE) {
     PrintError("Could not set capability", mpDataSource);
   }
-
-  UnlockDsmMemory(capability.hContainer);
-  FreeDsmMemory(capability.hContainer);
 
   return returnCode;
 }
@@ -1288,14 +962,14 @@ TW_UINT16 Application::SetCapabilityArray(
   TW_CAPABILITY capability;
   capability.Cap = id;
   capability.ConType = TWON_ARRAY;
-  capability.hContainer = AllocDsmMemory(allocSize);
+  capability.hContainer = (TW_HANDLE) allocSize;
 
   if (capability.hContainer == nullptr) {
     PrintError("Error allocating memory");
     return TWRC_FAILURE;
   }
 
-  auto pArray = (pTW_ARRAY) LockDsmMemory(capability.hContainer);
+  auto pArray = (pTW_ARRAY) capability.hContainer;
   pArray->ItemType = twainType;
   pArray->NumItems = count;
 
@@ -1357,9 +1031,6 @@ TW_UINT16 Application::SetCapabilityArray(
     PrintError("Could not set capability", mpDataSource);
   }
 
-  UnlockDsmMemory(capability.hContainer);
-  FreeDsmMemory(capability.hContainer);
-
   return returnCode;
 }
 
@@ -1384,7 +1055,6 @@ TW_INT16 Application::GetCapability(TW_CAPABILITY &capability, TW_UINT16 message
   // If it does, free that memory before the call else we'll have a memory
   // leak because the source allocates memory during a MSG_GET:
   if (capability.hContainer != nullptr) {
-    FreeDsmMemory(capability.hContainer);
     capability.hContainer = nullptr;
   }
 
@@ -1427,131 +1097,16 @@ TW_INT16 Application::QuerySupportCapability(
     (TW_MEMREF) &capability);
   if (returnCode == TWRC_SUCCESS) {
     if (capability.ConType == TWON_ONEVALUE) {
-      auto pOneValue = (pTW_ONEVALUE) LockDsmMemory(capability.hContainer);
+      auto pOneValue = (pTW_ONEVALUE) capability.hContainer;
       querySupport = pOneValue->ItemType;
-      UnlockDsmMemory(capability.hContainer);
     }
 
-    FreeDsmMemory(capability.hContainer);
   } else {
     string errorMessage = "Failed to query support the capability: [";
     errorMessage += CapabilityToString(id);
     errorMessage += "]";
 
     PrintError(errorMessage, mpDataSource);
-  }
-
-  return returnCode;
-}
-
-TW_INT16 Application::GetLabel(TW_UINT16 capabilityId, string &label) {
-  if (mGetLabelSupported == TWCC_BADPROTOCOL) {
-    return TWRC_FAILURE;
-  }
-
-  if (isDataSourceClosed()) {
-    return TWCC_SEQERROR;
-  }
-
-  TW_CAPABILITY capability = {0};
-  capability.Cap = capabilityId;
-  capability.hContainer = nullptr;
-  capability.ConType = TWON_ONEVALUE;
-
-  TW_UINT16 returnCode = CallDsm(
-    DG_CONTROL,
-    DAT_CAPABILITY,
-    MSG_GETLABEL,
-    (TW_MEMREF) &capability);
-  if (returnCode == TWRC_SUCCESS) {
-    if (capability.ConType == TWON_ONEVALUE) {
-      auto pOneValue = (pTW_ONEVALUE) LockDsmMemory(capability.hContainer);
-      TW_UINT16 type = pOneValue->ItemType;
-      UnlockDsmMemory(capability.hContainer);
-
-      switch (type) {
-        case TWTY_STR32:
-        case TWTY_STR64:
-        case TWTY_STR128:
-          PrintError("Wrong STR type for MSG_GETLABEL", mpDataSource);
-
-        case TWTY_STR255:
-          GetCurrent(&capability, label);
-          break;
-
-        default:
-          returnCode = TWRC_FAILURE;
-          break;
-      }
-    }
-
-    FreeDsmMemory(capability.hContainer);
-  } else {
-    string errorMessage = "Failed to GetLabel for the capability: [";
-    errorMessage += CapabilityToString(capabilityId);
-    errorMessage += "]";
-
-    auto errorCode = PrintError(errorMessage, mpDataSource);
-    if (errorCode == TWCC_BADPROTOCOL) {
-      mGetLabelSupported = TWCC_BADPROTOCOL;
-    }
-  }
-
-  return returnCode;
-}
-
-TW_INT16 Application::GetHelp(TW_UINT16 capabilityId, string &help) {
-  if (mGetHelpSupported == TWCC_BADPROTOCOL) {
-    return TWRC_FAILURE;
-  }
-
-  if (isDataSourceClosed()) {
-    return TWCC_SEQERROR;
-  }
-
-  TW_CAPABILITY capability = {0};
-  capability.Cap = capabilityId;
-  capability.hContainer = nullptr;
-  capability.ConType = TWON_ONEVALUE;
-
-  TW_UINT16 returnCode = CallDsm(
-    DG_CONTROL,
-    DAT_CAPABILITY,
-    MSG_GETHELP,
-    (TW_MEMREF) &capability);
-  if (returnCode == TWRC_SUCCESS) {
-    if (capability.ConType == TWON_ONEVALUE) {
-      auto pOneValue = (pTW_ONEVALUE) LockDsmMemory(capability.hContainer);
-      TW_UINT16 type = pOneValue->ItemType;
-      UnlockDsmMemory(capability.hContainer);
-
-      switch (type) {
-        case TWTY_STR32:
-        case TWTY_STR64:
-        case TWTY_STR128:
-          PrintError("Wrong STR type for MSG_GETHELP", mpDataSource);
-
-        case TWTY_STR255:
-          // TODO: Find out if this breaks anything. The reference code didn't make sense.
-          GetCurrent(&capability, help);
-          break;
-
-        default:
-          returnCode = TWRC_FAILURE;
-          break;
-      }
-    }
-
-    FreeDsmMemory(capability.hContainer);
-  } else {
-    string errorMessage = "Failed to GetHelp for the capability: [";
-    errorMessage += CapabilityToString(capabilityId);
-    errorMessage += "]";
-
-    auto errorCode = PrintError(errorMessage, mpDataSource);
-    if (errorCode == TWCC_BADPROTOCOL) {
-      mGetLabelSupported = TWCC_BADPROTOCOL;
-    }
   }
 
   return returnCode;
@@ -1649,52 +1204,42 @@ void Application::TerminateCapabilities() {
   }
 
   if (ImageBitDepth.hContainer) {
-    FreeDsmMemory(ImageBitDepth.hContainer);
     ImageBitDepth.hContainer = nullptr;
   }
 
   if (ImageCompression.hContainer) {
-    FreeDsmMemory(ImageCompression.hContainer);
     ImageCompression.hContainer = nullptr;
   }
 
   if (ImageFrames.hContainer) {
-    FreeDsmMemory(ImageFrames.hContainer);
     ImageFrames.hContainer = nullptr;
   }
 
   if (ImageFileFormat.hContainer) {
-    FreeDsmMemory(ImageFileFormat.hContainer);
     ImageFileFormat.hContainer = nullptr;
   }
 
   if (ImagePixelType.hContainer) {
-    FreeDsmMemory(ImagePixelType.hContainer);
     ImagePixelType.hContainer = nullptr;
   }
 
   if (ImageTransferMechanism.hContainer) {
-    FreeDsmMemory(ImageTransferMechanism.hContainer);
     ImageTransferMechanism.hContainer = nullptr;
   }
 
   if (ImageUnits.hContainer) {
-    FreeDsmMemory(ImageUnits.hContainer);
     ImageUnits.hContainer = nullptr;
   }
 
   if (ImageXResolution.hContainer) {
-    FreeDsmMemory(ImageXResolution.hContainer);
     ImageXResolution.hContainer = nullptr;
   }
 
   if (ImageYResolution.hContainer) {
-    FreeDsmMemory(ImageYResolution.hContainer);
     ImageYResolution.hContainer = nullptr;
   }
 
   if (TransferCount.hContainer) {
-    FreeDsmMemory(TransferCount.hContainer);
     TransferCount.hContainer = nullptr;
   }
 }
@@ -1713,7 +1258,6 @@ void Application::StartScan() {
 
   switch (transferMechanism) {
     case TWSX_NATIVE:
-      InitiateNativeTransfer();
       break;
 
     case TWSX_FILE: {
@@ -1806,7 +1350,7 @@ void Application::SetImageFrames(const pTW_FRAME pValue) {
   }
 
   if (ImageFrames.ConType == TWON_ENUMERATION && ImageFrames.hContainer != nullptr) {
-    auto pEnumFrame = (pTWEnumerationFrame) LockDsmMemory(ImageFrames.hContainer);
+    auto pEnumFrame = (pTWEnumerationFrame) ImageFrames.hContainer;
     auto pFrame = &pEnumFrame->ItemList[pEnumFrame->CurrentIndex];
 
     if (
@@ -1817,8 +1361,6 @@ void Application::SetImageFrames(const pTW_FRAME pValue) {
       ) {
       PrintMessage("Image Frames successfully set!\n");
     }
-
-    UnlockDsmMemory(ImageFrames.hContainer);
   }
 }
 
@@ -1837,14 +1379,12 @@ void Application::SetImagePixelType(const TW_UINT16 value) {
   }
 
   if (ImagePixelType.ConType == TWON_ENUMERATION && ImagePixelType.hContainer != nullptr) {
-    auto pEnum = (pTW_ENUMERATION) LockDsmMemory(ImagePixelType.hContainer);
+    auto pEnum = (pTW_ENUMERATION) ImagePixelType.hContainer;
     auto currentItem = ((TW_UINT16 *) &pEnum->ItemList)[pEnum->CurrentIndex];
 
     if (currentItem == value) {
       PrintMessage("Image Pixel Type successfully set!\n");
     }
-
-    UnlockDsmMemory(ImagePixelType.hContainer);
   }
 
   GetCapability(ImageBitDepth);
@@ -1885,7 +1425,7 @@ void Application::SetImageUnits(const TW_UINT16 value) {
   }
 
   if (ImageUnits.ConType == TWON_ENUMERATION && ImageUnits.hContainer != nullptr) {
-    auto pEnum = (pTW_ENUMERATION) LockDsmMemory(ImageUnits.hContainer);
+    auto pEnum = (pTW_ENUMERATION) ImageUnits.hContainer;
 
     if (pEnum->ItemList[pEnum->CurrentIndex] == value) {
       PrintMessage("Image Units successfully set!\n");
@@ -1893,8 +1433,6 @@ void Application::SetImageUnits(const TW_UINT16 value) {
       GetCapability(ImageXResolution);
       GetCapability(ImageYResolution);
     }
-
-    UnlockDsmMemory(ImageUnits.hContainer);
   }
 }
 
@@ -1940,7 +1478,7 @@ TW_UINT16 Application::callDsmControl(
   TW_MEMREF pData
 ) {
   return DsmEntry(
-    &mIdentity,
+    mIdentity,
     nullptr,
     DG_CONTROL,
     dataArgumentType,

@@ -15,7 +15,7 @@ Application *gpApplication;
  * It is important that the application returns right away after receiving this
  * message. Set a flag and return. Do not process the callback in this function.
  */
-FAR PASCAL TW_UINT16 DSMCallback(
+FAR TW_UINT16 DSMCallback(
   pTW_IDENTITY pOrigin,
   pTW_IDENTITY pDest,
   TW_UINT32 dataGroup,
@@ -60,15 +60,17 @@ int main(int argc, char *argv[]) {
   UNUSEDARG(argv);
   int ret = EXIT_SUCCESS;
 
-  cout << "YAY";
-
   gpApplication = new Application();
+
+  gpApplication->ConnectDsm();
+  gpApplication->GetDataSources();
+  gpApplication->DisconnectDsm();
 
   signal(SIGINT, &onSigInt);
 
   string input;
 
-  PrintOptions();
+//  PrintOptions();
 
   // Start the main event loop:
   for (;;) {

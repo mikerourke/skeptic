@@ -28,8 +28,6 @@ char *unknownValue(const char *fieldName, const TW_UINT16 value) {
 
 const char *CapabilityToString(const TW_UINT16 capability) {
   switch (capability) {
-    case ICAP_AUTODISCARDBLANKPAGES:
-      return "ICAP_AUTODISCARDBLANKPAGES";
     case CAP_CUSTOMBASE:
       return "CAP_CUSTOMBASE";
 
@@ -191,33 +189,6 @@ const char *CapabilityToString(const TW_UINT16 capability) {
 
     case CAP_BATTERYPERCENTAGE:
       return "CAP_BATTERYPERCENTAGE";
-
-    case CAP_CAMERASIDE:
-      return "CAP_CAMERASIDE";
-
-    case CAP_SEGMENTED:
-      return "CAP_SEGMENTED";
-
-    case CAP_CAMERAENABLED:
-      return "CAP_CAMERAENABLED";
-
-    case CAP_CAMERAORDER:
-      return "CAP_CAMERAORDER";
-
-    case CAP_MICRENABLED:
-      return "CAP_MICRENABLED";
-
-    case CAP_FEEDERPREP:
-      return "CAP_FEEDERPREP";
-
-    case CAP_FEEDERPOCKET:
-      return "CAP_FEEDERPOCKET";
-
-    case CAP_AUTOMATICSENSEMEDIUM:
-      return "CAP_AUTOMATICSENSEMEDIUM";
-
-    case CAP_CUSTOMINTERFACEGUID:
-      return "CAP_CUSTOMINTERFACEGUID";
 
     case ICAP_AUTOBRIGHT:
       return "ICAP_AUTOBRIGHT";
@@ -426,39 +397,6 @@ const char *CapabilityToString(const TW_UINT16 capability) {
     case ICAP_JPEGQUALITY:
       return "ICAP_JPEGQUALITY";
 
-    case ICAP_FEEDERTYPE:
-      return "ICAP_FEEDERTYPE";
-
-    case ICAP_ICCPROFILE:
-      return "ICAP_ICCPROFILE";
-
-    case ICAP_AUTOSIZE:
-      return "ICAP_AUTOSIZE";
-
-    case ICAP_AUTOMATICCROPUSESFRAME:
-      return "ICAP_AUTOMATICCROPUSESFRAME";
-
-    case ICAP_AUTOMATICLENGTHDETECTION:
-      return "ICAP_AUTOMATICLENGTHDETECTION";
-
-    case ICAP_AUTOMATICCOLORENABLED:
-      return "ICAP_AUTOMATICCOLORENABLED";
-
-    case ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE:
-      return "ICAP_AUTOMATICCOLORNONCOLORPIXELTYPE";
-
-    case ICAP_COLORMANAGEMENTENABLED:
-      return "ICAP_COLORMANAGEMENTENABLED";
-
-    case ICAP_IMAGEMERGE:
-      return "ICAP_IMAGEMERGE";
-
-    case ICAP_IMAGEMERGEHEIGHTTHRESHOLD:
-      return "ICAP_IMAGEMERGEHEIGHTTHRESHOLD";
-
-    case ICAP_SUPPORTEDEXTIMAGEINFO:
-      return "ICAP_SUPPORTEDEXTIMAGEINFO";
-
     case ACAP_AUDIOFILEFORMAT:
       return "ACAP_AUDIOFILEFORMAT";
 
@@ -555,24 +493,6 @@ const char *ConditionCodeToString(const TW_UINT16 conditionCode) {
     case TWCC_CHECKDEVICEONLINE:
       return "TWCC_CHECKDEVICEONLINE";
 
-    case TWCC_INTERLOCK:
-      return "TWCC_INTERLOCK";
-
-    case TWCC_DAMAGEDCORNER:
-      return "TWCC_DAMAGEDCORNER";
-
-    case TWCC_FOCUSERROR:
-      return "TWCC_FOCUSERROR";
-
-    case TWCC_DOCTOOLIGHT:
-      return "TWCC_DOCTOOLIGHT";
-
-    case TWCC_DOCTOODARK:
-      return "TWCC_DOCTOODARK";
-
-    case TWCC_NOMEDIA:
-      return "TWCC_NOMEDIA";
-
     default:
       return unknownValue("Unknown Condition Code", conditionCode);
   }
@@ -607,23 +527,6 @@ const char *ImageFileFormatToExtension(const TW_UINT16 imageFileFormat) {
 
     case TWFF_EXIF:
       return ".exif";
-
-    case TWFF_JP2:
-      return ".jp2";
-
-    case TWFF_JPN:
-      return ".jpn";
-
-    case TWFF_JPX:
-      return ".jpx";
-
-    case TWFF_DEJAVU:
-      return ".dejavu";
-
-    case TWFF_PDF:
-    case TWFF_PDFA:
-    case TWFF_PDFA2:
-      return ".pdf";
 
     default:
       return unknownValue("Unknown Image File Format", imageFileFormat);
@@ -677,9 +580,6 @@ const char *TwainTypeToString(const TW_UINT16 type) {
 
     case TWTY_UNI512:
       return "TWTY_UNI512";
-
-    case TWTY_HANDLE:
-      return "TWTY_HANDLE";
 
     default:
       return unknownValue("Unknown Type", type);

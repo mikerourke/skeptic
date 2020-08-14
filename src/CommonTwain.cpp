@@ -1,16 +1,8 @@
 #include "CommonTwain.h"
 
-extern TW_MEMREF LockDsmMemory(TW_HANDLE memoryHandle);
-
-extern void UnlockDsmMemory(TW_HANDLE memoryHandle);
-
-extern TW_HANDLE AllocDsmMemory(TW_UINT32 memorySize);
-
-extern void FreeDsmMemory(TW_HANDLE memoryHandle);
-
 TW_FIX32 FloatToFix32(float floatValue) {
   TW_FIX32 fix32Value;
-  TW_BOOL sign = floatValue < 0 ? TRUE : FALSE;
+  TW_BOOL sign = floatValue < 0 ? 1 : 0;
   auto value = (TW_INT32) (floatValue * 65536.0 + (sign ? (-0.5) : 0.5));
   fix32Value.Whole = (TW_UINT16) value >> 16;
   fix32Value.Frac = (TW_UINT16) value & 0x0000ffffL;
@@ -27,7 +19,7 @@ bool GetCurrent(TW_CAPABILITY *pCapability, TW_UINT32 &value) {
 
   if (pCapability->hContainer != nullptr) {
     if (pCapability->ConType == TWON_ENUMERATION) {
-      auto pCapabilityPT = (pTW_ENUMERATION) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_ENUMERATION) pCapability->hContainer;
       switch (pCapabilityPT->ItemType) {
         case TWTY_INT32:
           value = (TW_INT32) ((pTW_INT32) (&pCapabilityPT->ItemList))[pCapabilityPT->CurrentIndex];
@@ -65,22 +57,18 @@ bool GetCurrent(TW_CAPABILITY *pCapability, TW_UINT32 &value) {
           break;
 
       }
-      UnlockDsmMemory(pCapability->hContainer);
-
     } else if (pCapability->ConType == TWON_ONEVALUE) {
-      auto pCapabilityPT = (pTW_ONEVALUE) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_ONEVALUE) pCapability->hContainer;
       if (pCapabilityPT->ItemType < TWTY_FIX32) {
         value = pCapabilityPT->Item;
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     } else if (pCapability->ConType == TWON_RANGE) {
-      auto pCapabilityPT = (pTW_RANGE) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_RANGE) pCapability->hContainer;
       if (pCapabilityPT->ItemType < TWTY_FIX32) {
         value = pCapabilityPT->CurrentValue;
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -93,7 +81,7 @@ bool GetCurrent(TW_CAPABILITY *pCapability, string &value) {
 
   if (pCapability->hContainer != nullptr) {
     if (pCapability->ConType == TWON_ENUMERATION) {
-      auto pCapabilityPT = (pTW_ENUMERATION) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_ENUMERATION) pCapability->hContainer;
       switch (pCapabilityPT->ItemType) {
         case TWTY_STR32: {
           pTW_STR32 pStr = &((pTW_STR32) (&pCapabilityPT->ItemList))[pCapabilityPT->CurrentIndex];
@@ -132,9 +120,8 @@ bool GetCurrent(TW_CAPABILITY *pCapability, string &value) {
           break;
       }
 
-      UnlockDsmMemory(pCapability->hContainer);
     } else if (pCapability->ConType == TWON_ONEVALUE) {
-      auto pCapabilityPT = (pTW_ONEVALUE) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_ONEVALUE) pCapability->hContainer;
 
       switch (pCapabilityPT->ItemType) {
         case TWTY_STR32: {
@@ -173,8 +160,6 @@ bool GetCurrent(TW_CAPABILITY *pCapability, string &value) {
         }
           break;
       }
-
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -186,28 +171,25 @@ bool GetCurrent(TW_CAPABILITY *pCapability, TW_FIX32 &value) {
 
   if (nullptr != pCapability->hContainer) {
     if (pCapability->ConType == TWON_ENUMERATION) {
-      auto pCapabilityPT = (pTWEnumerationFix32) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTWEnumerationFix32) pCapability->hContainer;
 
       if (pCapabilityPT->ItemType == TWTY_FIX32) {
         value = pCapabilityPT->ItemList[pCapabilityPT->CurrentIndex];
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     } else if (pCapability->ConType == TWON_ONEVALUE) {
-      auto pCapabilityPT = (pTWOneValueFix32) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTWOneValueFix32) pCapability->hContainer;
 
       if (pCapabilityPT->ItemType == TWTY_FIX32) {
         value = pCapabilityPT->Item;
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     } else if (pCapability->ConType == TWON_RANGE) {
-      auto pCapabilityPT = (pTW_RANGE) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTW_RANGE) pCapability->hContainer;
       if (pCapabilityPT->ItemType == TWTY_FIX32) {
         value = *(TW_FIX32 *) &pCapabilityPT->CurrentValue;
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -219,21 +201,19 @@ bool GetCurrent(TW_CAPABILITY *pCapability, TW_FRAME &frame) {
 
   if (pCapability->hContainer != nullptr) {
     if (pCapability->ConType == TWON_ENUMERATION) {
-      auto pCapabilityPT = (pTWEnumerationFrame) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTWEnumerationFrame) pCapability->hContainer;
 
       if (pCapabilityPT->ItemType == TWTY_FRAME) {
         frame = pCapabilityPT->ItemList[pCapabilityPT->CurrentIndex];
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     } else if (pCapability->ConType == TWON_ONEVALUE) {
-      auto pCapabilityPT = (pTWOneValueFrame) LockDsmMemory(pCapability->hContainer);
+      auto pCapabilityPT = (pTWOneValueFrame) pCapability->hContainer;
 
       if (pCapabilityPT->ItemType == TWTY_FRAME) {
         frame = pCapabilityPT->Item;
         ret = true;
       }
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -251,14 +231,14 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_UINT32 &value) {
       TW_UINT16 itemType = 0;
 
       if (pCapability->ConType == TWON_ARRAY) {
-        auto pArray = (pTW_ARRAY) LockDsmMemory(pCapability->hContainer);
+        auto pArray = (pTW_ARRAY) pCapability->hContainer;
         itemCount = pArray->NumItems;
         itemType = pArray->ItemType;
         pData = &pArray->ItemList[0];
       }
 
       if (pCapability->ConType == TWON_ENUMERATION) {
-        auto pEnumeration = (pTW_ENUMERATION) LockDsmMemory(pCapability->hContainer);
+        auto pEnumeration = (pTW_ENUMERATION) pCapability->hContainer;
         itemCount = pEnumeration->NumItems;
         itemType = pEnumeration->ItemType;
         pData = &pEnumeration->ItemList[0];
@@ -306,7 +286,6 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_UINT32 &value) {
         }
       }
 
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -324,14 +303,14 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, string &value) {
       TW_UINT16 itemType = 0;
 
       if (pCapability->ConType == TWON_ARRAY) {
-        auto pArray = (pTW_ARRAY) LockDsmMemory(pCapability->hContainer);
+        auto pArray = (pTW_ARRAY) pCapability->hContainer;
         itemCount = pArray->NumItems;
         itemType = pArray->ItemType;
         pData = &pArray->ItemList[0];
       }
 
       if (pCapability->ConType == TWON_ENUMERATION) {
-        auto pEnumeration = (pTW_ENUMERATION) LockDsmMemory(pCapability->hContainer);
+        auto pEnumeration = (pTW_ENUMERATION) pCapability->hContainer;
         itemCount = pEnumeration->NumItems;
         itemType = pEnumeration->ItemType;
         pData = &pEnumeration->ItemList[0];
@@ -380,7 +359,6 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, string &value) {
         }
       }
 
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -398,15 +376,14 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_FIX32 &value) {
       TW_UINT16 itemType = 0;
 
       if (pCapability->ConType == TWON_ARRAY) {
-        auto pArray = (pTWArrayFix32) LockDsmMemory(pCapability->hContainer);
+        auto pArray = (pTWArrayFix32) pCapability->hContainer;
         itemCount = pArray->NumItems;
         itemType = pArray->ItemType;
         pData = &pArray->ItemList[0];
       }
 
       if (pCapability->ConType == TWON_ENUMERATION) {
-        auto pEnumeration = (pTWEnumerationFix32) LockDsmMemory(
-          pCapability->hContainer);
+        auto pEnumeration = (pTWEnumerationFix32) pCapability->hContainer;
         itemCount = pEnumeration->NumItems;
         itemType = pEnumeration->ItemType;
         pData = &pEnumeration->ItemList[0];
@@ -417,7 +394,6 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_FIX32 &value) {
         ret = true;
       }
 
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -435,15 +411,14 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_FRAME &value) {
       TW_UINT16 itemType = 0;
 
       if (pCapability->ConType == TWON_ARRAY) {
-        auto pArray = (pTWArrayFrame) LockDsmMemory(pCapability->hContainer);
+        auto pArray = (pTWArrayFrame) pCapability->hContainer;
         itemCount = pArray->NumItems;
         itemType = pArray->ItemType;
         pData = &pArray->ItemList[0];
       }
 
       if (pCapability->ConType == TWON_ENUMERATION) {
-        auto pEnumeration = (pTWEnumerationFrame) LockDsmMemory(
-          pCapability->hContainer);
+        auto pEnumeration = (pTWEnumerationFrame) pCapability->hContainer;
         itemCount = pEnumeration->NumItems;
         itemType = pEnumeration->ItemType;
         pData = &pEnumeration->ItemList[0];
@@ -454,7 +429,6 @@ bool GetItem(TW_CAPABILITY *pCapability, TW_UINT32 item, TW_FRAME &value) {
         ret = true;
       }
 
-      UnlockDsmMemory(pCapability->hContainer);
     }
   }
 
@@ -489,12 +463,6 @@ int GetTwainTypeSize(TW_UINT16 itemType) {
       return sizeof(TW_STR128);
     case TWTY_STR255:
       return sizeof(TW_STR255);
-    case TWTY_STR1024:
-      return sizeof(TW_STR1024);
-    case TWTY_UNI512:
-      return sizeof(TW_UNI512);
-    case TWTY_HANDLE:
-      return sizeof(TW_HANDLE);
     default:
       return 0;
   }
